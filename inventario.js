@@ -485,6 +485,284 @@ function exportarComoArchivo() {
     a.href = url;
     a.download = nombreArchivo;
     document.body.appendChild(a);
+// ============================================
+// FUNCIONES REALES DE EXPORTACIÓN/IMPORTACIÓN
+// ============================================
+
+function base64Encode(str) {
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+        return String.fromCharCode('0x' + p1);
+    }));
+}
+
+function base64Decode(str) {
+    return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+}
+
+function generarCodigoRespaldo() {
+    if (!usuarioActivo) {
+        alert("Debes iniciar sesión para generar respaldo");
+        return;
+    }
+    
+    try {
+        console.log("🔐 Generando código de respaldo...");
+        
+        // 1. Preparar datos
+        const datos = {
+            i: inventario,
+            h: historial,
+            m: {
+                f: new Date().toISOString(),
+                u: usuarioActivo,
+                p: inventario.length,
+                m: historial.length
+            }
+        };
+        
+        // 2. Convertir a JSON
+        const jsonString = JSON.stringify(datos);
+        
+        // 3. Crear hash único
+        let hash = 0;
+        for (let i = 0; i < jsonString.length; i++) {
+            hash = ((hash << 5) - hash) + jsonString.charCodeAt(i);
+            hash = hash & hash;
+        }
+        
+        // 4. Generar código de 12 caracteres
+        const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let codigo = '';
+        
+        // Semilla basada en el hash
+        Math.seed = Math.abs(hash);
+        for (let i = 0; i < 12; i++) {
+            Math.seed = (Math.seed * 9301 + 49297) % 233280;
+            const rnd = Math.seed / 233280;
+            codigo += caracteres.charAt(Math.floor(rnd * caracteres.length));
+        }
+        
+        // 5. Formatear y guardar
+        const codigoFormateado = codigo.match(/.{1,3}/g).join('-');
+        
+        // Guardar datos asociados al código
+        const codigoData = {
+            codigo: codigo,
+            datos: jsonString,
+            timestamp: Date.now()
+        };
+        
+        localStorage.setItem(`respaldo_${codigo}`, JSON.stringify(codigoData));
+        
+        // 6. Mostrar al usuario
+        mostrarModalCodigo(codigoFormateado, datos.m);
+        
+        console.log("✅ Código generado:", codigoFormateado);
+        
+    } catch (error) {
+        console.error("❌ Error:", error);
+        alert("Error al generar código");
+    }
+}
+
+function mostrarModalCodigo(codigo, metadata) {
+    const modalHTML = `
+    <div class="modal">
+        <div class="modal-contenido">
+            <h2>🔐 Código de Respaldo</h2>
+            
+            <div class="codigo-mostrar">
+                ${codigo}
+            </div>
+            
+            <div class="codigo-info">
+                <p><strong>Generado:</strong> ${new Date(metadata.f).toLocaleString('es-MX')}</p>
+                <p><strong>Por:</strong> ${metadata.u}</p>
+                <p><strong>Productos:</strong> ${metadata.p}</p>
+            </div>
+            
+            <button onclick="copiarCodigo('${codigo}')">📋 Copiar</button>
+            <button onclick="cerrarModal()">Cerrar</button>
+        </div>
+    </div>`;
+    
+    // Remover modales anteriores
+    document.querySelectorAll('.modal').forEach(m => m.remove());
+    
+    // Agregar nuevo
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function copiarCodigo(codigo) {
+    navigator.clipboard.writeText(codigo)
+        .then(() => alert("✅ Código copiado"))
+        .catch(() => {
+            // Fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = codigo;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("✅ Código copiado (modo alternativo)");
+        });
+}
+
+function mostrarImportarInventario() {
+    if (!usuarioActivo) {
+        alert("Debes iniciar sesión");
+        return;
+    }
+    
+    const modalHTML = `
+    <div class="modal">
+        <div class="modal-contenido">
+            <h2>📥 Importar Inventario</h2>
+            
+            <div class="opciones-importar">
+                <div onclick="importarDesdeCodigo()">
+                    <div>🔐</div>
+                    <h3>Desde Código</h3>
+                    <p>Pega un código de respaldo</p>
+                </div>
+                
+                <div onclick="importarDesdeArchivo()">
+                    <div>📁</div>
+                    <h3>Desde Archivo</h3>
+                    <p>Carga un archivo .json</p>
+                </div>
+            </div>
+            
+            <button onclick="cerrarModal()">Cancelar</button>
+        </div>
+    </div>`;
+    
+    cerrarModal();
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function importarDesdeCodigo() {
+    const codigo = prompt("Pega tu código de 12 caracteres:");
+    if (!codigo) return;
+    
+    const codigoLimpio = codigo.replace(/-/g, '');
+    
+    if (codigoLimpio.length !== 12) {
+        alert("El código debe tener 12 caracteres");
+        return;
+    }
+    
+    // Buscar datos del código
+    const codigoData = localStorage.getItem(`respaldo_${codigoLimpio}`);
+    
+    if (!codigoData) {
+        alert("Código no encontrado o expirado");
+        return;
+    }
+    
+    try {
+        const datos = JSON.parse(codigoData);
+        const inventarioData = JSON.parse(datos.datos);
+        
+        if (confirm(`¿Importar ${inventarioData.i.length} productos?`)) {
+            inventario = inventarioData.i;
+            historial = inventarioData.h || [];
+            
+            // Actualizar próximo ID
+            proximoId = inventario.length > 0 ? Math.max(...inventario.map(p => p.id)) + 1 : 1;
+            
+            // Guardar
+            guardarTodo();
+            
+            // Actualizar interfaz
+            cargarInventarioAdmin();
+            mostrarHistorial();
+            
+            alert(`✅ Importado: ${inventario.length} productos`);
+        }
+        
+    } catch (error) {
+        console.error("Error importando:", error);
+        alert("Error al importar el código");
+    }
+}
+
+function importarDesdeArchivo() {
+    // Crear input de archivo
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = function(e) {
+        const archivo = e.target.files[0];
+        if (!archivo) return;
+        
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const datos = JSON.parse(e.target.result);
+                
+                if (!datos.i || !Array.isArray(datos.i)) {
+                    throw new Error("Archivo inválido");
+                }
+                
+                if (confirm(`¿Importar ${datos.i.length} productos?`)) {
+                    inventario = datos.i;
+                    historial = datos.h || [];
+                    
+                    // Actualizar próximo ID
+                    proximoId = inventario.length > 0 ? Math.max(...inventario.map(p => p.id)) + 1 : 1;
+                    
+                    // Guardar
+                    guardarTodo();
+                    
+                    // Actualizar interfaz
+                    cargarInventarioAdmin();
+                    mostrarHistorial();
+                    
+                    alert(`✅ Importado: ${inventario.length} productos`);
+                }
+                
+            } catch (error) {
+                alert("Error: Archivo inválido o corrupto");
+            }
+        };
+        
+        reader.readAsText(archivo);
+    };
+    
+    input.click();
+}
+
+function exportarComoArchivo() {
+    if (!usuarioActivo) {
+        alert("Debes iniciar sesión");
+        return;
+    }
+    
+    const datos = {
+        inventario: inventario,
+        historial: historial,
+        metadata: {
+            fecha: new Date().toISOString(),
+            usuario: usuarioActivo
+        }
+    };
+    
+    const jsonString = JSON.stringify(datos, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const fecha = new Date().toISOString().split('T')[0];
+    const nombreArchivo = `inventario_${fecha}.json`;
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreArchivo;
+    document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
@@ -492,127 +770,6 @@ function exportarComoArchivo() {
     alert(`✅ Exportado: ${nombreArchivo}`);
 }
 
-function copiarCodigo(codigo) {
-    navigator.clipboard.writeText(codigo)
-        .then(() => alert("✅ Código copiado"))
-        .catch(() => alert("❌ Error al copiar"));
-}
-
 function cerrarModal() {
-    const modales = document.querySelectorAll('.modal');
-    modales.forEach(modal => modal.remove());
+    document.querySelectorAll('.modal').forEach(modal => modal.remove());
 }
-
-function mostrarImportarCodigo() {
-    const contenido = `
-    <div>
-        <h3>🔐 Importar desde Código</h3>
-        <textarea id="codigoInput" placeholder="Pega tu código aquí..." rows="3"></textarea>
-        <button onclick="importarDesdeCodigo()">📥 Importar</button>
-        <button onclick="mostrarImportarInventario()">↩️ Regresar</button>
-    </div>`;
-    
-    document.querySelector('.modal > .modal-contenido').innerHTML = contenido;
-}
-
-function mostrarImportarArchivo() {
-    const contenido = `
-    <div>
-        <h3>📁 Importar desde Archivo</h3>
-        <div onclick="document.getElementById('fileInput').click()">
-            📂 Arrastra o selecciona archivo
-        </div>
-        <input type="file" id="fileInput" accept=".json" style="display:none;" 
-               onchange="procesarArchivoImportado(this)">
-        <button onclick="mostrarImportarInventario()">↩️ Regresar</button>
-    </div>`;
-    
-    document.querySelector('.modal > .modal-contenido').innerHTML = contenido;
-}
-
-function importarDesdeCodigo() {
-    const codigoInput = document.getElementById('codigoInput');
-    if (!codigoInput) return;
-    
-    const codigo = codigoInput.value.trim().replace(/-/g, '');
-    
-    if (codigo.length !== 12) {
-        alert("El código debe tener 12 caracteres");
-        return;
-    }
-    
-    try {
-        const jsonString = atob(codigo + '==');
-        const datos = JSON.parse(jsonString);
-        
-        if (datos.inventario && Array.isArray(datos.inventario)) {
-            inventario = datos.inventario;
-            historial = datos.historial || [];
-            guardarTodo();
-            cargarInventarioAdmin();
-            cerrarModal();
-            alert(`✅ Importado: ${inventario.length} productos`);
-        } else {
-            alert("❌ Código inválido");
-        }
-    } catch (error) {
-        alert("❌ Error al importar");
-    }
-}
-
-function procesarArchivoImportado(input) {
-    const archivo = input.files[0];
-    if (!archivo) return;
-    
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        try {
-            const datos = JSON.parse(e.target.result);
-            
-            if (datos.inventario && Array.isArray(datos.inventario)) {
-                inventario = datos.inventario;
-                historial = datos.historial || [];
-                guardarTodo();
-                cargarInventarioAdmin();
-                cerrarModal();
-                alert(`✅ Importado: ${inventario.length} productos`);
-            } else {
-                alert("❌ Archivo inválido");
-            }
-        } catch (error) {
-            alert("❌ Error al procesar archivo");
-        }
-    };
-    
-    reader.readAsText(archivo);
-}
-
-// ============================================
-// 9. HACER FUNCIONES GLOBALES
-// ============================================
-
-// Lista COMPLETA de funciones que deben ser globales
-window.mostrarLogin = mostrarLogin;
-window.regresarAVisita = regresarAVisita;
-window.verificarCredenciales = verificarCredenciales;
-window.cerrarSesion = cerrarSesion;
-window.agregarProducto = agregarProducto;
-window.modificarProducto = modificarProducto;
-window.eliminarProducto = eliminarProducto;
-window.generarCodigoRespaldo = generarCodigoRespaldo;
-window.mostrarImportarInventario = mostrarImportarInventario;
-window.exportarComoArchivo = exportarComoArchivo;
-window.copiarCodigo = copiarCodigo;
-window.cerrarModal = cerrarModal;
-window.mostrarImportarCodigo = mostrarImportarCodigo;
-window.mostrarImportarArchivo = mostrarImportarArchivo;
-window.importarDesdeCodigo = importarDesdeCodigo;
-window.procesarArchivoImportado = procesarArchivoImportado;
-
-// ============================================
-// 10. INICIAR SISTEMA
-// ============================================
-
-// Inicializar cuando cargue la página
-document.addEventListener('DOMContentLoaded', inicializar);
