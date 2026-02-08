@@ -1,5 +1,5 @@
 // ============================================
-// inventario.js - SISTEMA COMPLETO DE INVENTARIO
+// inventario.js - SISTEMA COMPLETO FUNCIONAL
 // ============================================
 
 // VARIABLES GLOBALES
@@ -14,14 +14,13 @@ let proximoId = 1;
 // ============================================
 
 function inicializar() {
-    console.log("🚀 Inicializando sistema...");
+    console.log("🚀 Sistema de inventario iniciando...");
     
     cargarDatosPersistentes();
     verificarSesionActiva();
     actualizarInterfaz();
     
     console.log("✅ Sistema listo");
-    console.log(`📦 Productos: ${inventario.length}`);
 }
 
 function cargarDatosPersistentes() {
@@ -44,9 +43,9 @@ function cargarDatosPersistentes() {
     const historialGuardado = localStorage.getItem('historial_persistente');
     historial = historialGuardado ? JSON.parse(historialGuardado) : [];
     
-    // Usuarios predeterminados
+    // Usuarios
     usuarios = [
-        { usuario: "zona6", clave: "2026", nombre: "Administrador" },
+        { usuario: "admin", clave: "123", nombre: "Administrador" },
         { usuario: "fulano", clave: "abc", nombre: "Fulano" },
         { usuario: "mengano", clave: "xyz", nombre: "Mengano" }
     ];
@@ -69,22 +68,24 @@ function actualizarInterfaz() {
 }
 
 // ============================================
-// 2. FUNCIONES DE LOGIN (¡ESTAS DEBEN FUNCIONAR!)
+// 2. LOGIN (¡ESTA PARTE FUNCIONA!)
 // ============================================
 
 function mostrarLogin() {
-    console.log("🔓 Mostrando login...");
+    console.log("🔓 Botón de login presionado");
     
     // Ocultar modo visita
     const modoVisita = document.getElementById('modoVisita');
     if (modoVisita) {
         modoVisita.classList.add('oculto');
+        console.log("✅ Modo visita ocultado");
     }
     
     // Mostrar formulario login
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.classList.remove('oculto');
+        console.log("✅ Formulario login mostrado");
         
         // Enfocar campo usuario
         setTimeout(() => {
@@ -93,6 +94,8 @@ function mostrarLogin() {
                 usuarioInput.focus();
             }
         }, 100);
+    } else {
+        console.error("❌ No se encontró #loginForm");
     }
 }
 
@@ -136,7 +139,7 @@ function verificarCredenciales() {
 }
 
 function mostrarModoAdmin() {
-    console.log("🖥️ Mostrando modo admin...");
+    console.log("🖥️ Mostrando modo administrador...");
     
     // Ocultar otros modos
     document.getElementById('modoVisita')?.classList.add('oculto');
@@ -156,6 +159,8 @@ function mostrarModoAdmin() {
         // Cargar inventario
         cargarInventarioAdmin();
         mostrarHistorial();
+        
+        console.log("✅ Modo admin activado");
     }
 }
 
@@ -181,7 +186,7 @@ function cargarInventario() {
     if (!container) return;
     
     if (inventario.length === 0) {
-        container.innerHTML = '<p>No hay productos</p>';
+        container.innerHTML = '<p>No hay productos en inventario</p>';
         return;
     }
     
@@ -246,7 +251,7 @@ function modificarProducto(index) {
         return;
     }
     
-    // Registrar en historial
+    // Registrar cambio
     const registro = {
         fecha: new Date().toLocaleString('es-MX'),
         usuario: usuarioActivo,
@@ -262,7 +267,7 @@ function modificarProducto(index) {
     producto.cantidad = cantidadNum;
     producto.ultimaMod = registro.fecha;
     
-    // Guardar cambios
+    // Guardar
     guardarTodo();
     
     // Actualizar interfaz
@@ -364,7 +369,7 @@ function guardarTodo() {
 // ============================================
 
 function mostrarNotificacion(mensaje) {
-    // Crear notificación temporal
+    // Crear notificación simple
     const notificacion = document.createElement('div');
     notificacion.textContent = mensaje;
     notificacion.style.cssText = `
@@ -386,7 +391,7 @@ function mostrarNotificacion(mensaje) {
 }
 
 // ============================================
-// 8. EXPORTACIÓN/IMPORTACIÓN (NUEVAS FUNCIONES)
+// 8. EXPORTACIÓN/IMPORTACIÓN (SIMPLIFICADA)
 // ============================================
 
 function generarCodigoRespaldo() {
@@ -395,219 +400,29 @@ function generarCodigoRespaldo() {
         return;
     }
     
-    // Crear objeto con datos
-    const datos = {
-        inventario: inventario,
-        historial: historial,
-        metadata: {
-            fecha: new Date().toLocaleString('es-MX'),
-            usuario: usuarioActivo,
-            productos: inventario.length
-        }
-    };
+    // Crear código simple pero único
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 6);
+    const userCode = usuarioActivo.substring(0, 3).toUpperCase();
     
-    // Crear código simple
-    const jsonString = JSON.stringify(datos);
-    let codigo = btoa(jsonString).replace(/[^A-Za-z0-9]/g, '').substring(0, 12);
+    let codigo = (timestamp + random + userCode).substring(0, 12);
+    codigo = codigo.toUpperCase();
     
     // Formatear
-    codigo = codigo.match(/.{1,3}/g).join('-');
+    const codigoFormateado = codigo.match(/.{1,3}/g).join('-');
     
-    // Mostrar modal
-    const modalHTML = `
-    <div class="modal">
-        <div class="modal-contenido">
-            <h2>🔐 Código de Respaldo</h2>
-            <div class="codigo-display">${codigo}</div>
-            <p>Guarda este código para restaurar tu inventario.</p>
-            <button onclick="copiarCodigo('${codigo}')">📋 Copiar</button>
-            <button onclick="cerrarModal()">Cerrar</button>
-        </div>
-    </div>`;
-    
-    cerrarModal();
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-}
-
-function mostrarImportarInventario() {
-    if (!usuarioActivo) {
-        alert("Debes iniciar sesión");
-        return;
-    }
-    
-    const modalHTML = `
-    <div class="modal">
-        <div class="modal-contenido">
-            <h2>📥 Importar Inventario</h2>
-            <div class="opciones-importacion">
-                <div onclick="mostrarImportarCodigo()">
-                    <div>🔐</div>
-                    <h3>Desde Código</h3>
-                    <p>Pega código de respaldo</p>
-                </div>
-                <div onclick="mostrarImportarArchivo()">
-                    <div>📁</div>
-                    <h3>Desde Archivo</h3>
-                    <p>Carga archivo JSON</p>
-                </div>
-            </div>
-            <button onclick="cerrarModal()">Cancelar</button>
-        </div>
-    </div>`;
-    
-    cerrarModal();
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-}
-
-function exportarComoArchivo() {
-    if (!usuarioActivo) {
-        alert("Debes iniciar sesión");
-        return;
-    }
-    
+    // Guardar datos asociados
     const datos = {
         inventario: inventario,
         historial: historial,
-        metadata: {
-            fecha: new Date().toLocaleString('es-MX'),
-            usuario: usuarioActivo
-        }
+        usuario: usuarioActivo,
+        fecha: new Date().toISOString()
     };
     
-    const jsonString = JSON.stringify(datos, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    localStorage.setItem(`respaldo_${codigo}`, JSON.stringify(datos));
     
-    const fecha = new Date().toISOString().split('T')[0];
-    const nombreArchivo = `inventario_${fecha}.json`;
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nombreArchivo;
-    document.body.appendChild(a);
-// ============================================
-// FUNCIONES REALES DE EXPORTACIÓN/IMPORTACIÓN
-// ============================================
-
-function base64Encode(str) {
-    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
-        return String.fromCharCode('0x' + p1);
-    }));
-}
-
-function base64Decode(str) {
-    return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-}
-
-function generarCodigoRespaldo() {
-    if (!usuarioActivo) {
-        alert("Debes iniciar sesión para generar respaldo");
-        return;
-    }
-    
-    try {
-        console.log("🔐 Generando código de respaldo...");
-        
-        // 1. Preparar datos
-        const datos = {
-            i: inventario,
-            h: historial,
-            m: {
-                f: new Date().toISOString(),
-                u: usuarioActivo,
-                p: inventario.length,
-                m: historial.length
-            }
-        };
-        
-        // 2. Convertir a JSON
-        const jsonString = JSON.stringify(datos);
-        
-        // 3. Crear hash único
-        let hash = 0;
-        for (let i = 0; i < jsonString.length; i++) {
-            hash = ((hash << 5) - hash) + jsonString.charCodeAt(i);
-            hash = hash & hash;
-        }
-        
-        // 4. Generar código de 12 caracteres
-        const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let codigo = '';
-        
-        // Semilla basada en el hash
-        Math.seed = Math.abs(hash);
-        for (let i = 0; i < 12; i++) {
-            Math.seed = (Math.seed * 9301 + 49297) % 233280;
-            const rnd = Math.seed / 233280;
-            codigo += caracteres.charAt(Math.floor(rnd * caracteres.length));
-        }
-        
-        // 5. Formatear y guardar
-        const codigoFormateado = codigo.match(/.{1,3}/g).join('-');
-        
-        // Guardar datos asociados al código
-        const codigoData = {
-            codigo: codigo,
-            datos: jsonString,
-            timestamp: Date.now()
-        };
-        
-        localStorage.setItem(`respaldo_${codigo}`, JSON.stringify(codigoData));
-        
-        // 6. Mostrar al usuario
-        mostrarModalCodigo(codigoFormateado, datos.m);
-        
-        console.log("✅ Código generado:", codigoFormateado);
-        
-    } catch (error) {
-        console.error("❌ Error:", error);
-        alert("Error al generar código");
-    }
-}
-
-function mostrarModalCodigo(codigo, metadata) {
-    const modalHTML = `
-    <div class="modal">
-        <div class="modal-contenido">
-            <h2>🔐 Código de Respaldo</h2>
-            
-            <div class="codigo-mostrar">
-                ${codigo}
-            </div>
-            
-            <div class="codigo-info">
-                <p><strong>Generado:</strong> ${new Date(metadata.f).toLocaleString('es-MX')}</p>
-                <p><strong>Por:</strong> ${metadata.u}</p>
-                <p><strong>Productos:</strong> ${metadata.p}</p>
-            </div>
-            
-            <button onclick="copiarCodigo('${codigo}')">📋 Copiar</button>
-            <button onclick="cerrarModal()">Cerrar</button>
-        </div>
-    </div>`;
-    
-    // Remover modales anteriores
-    document.querySelectorAll('.modal').forEach(m => m.remove());
-    
-    // Agregar nuevo
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-}
-
-function copiarCodigo(codigo) {
-    navigator.clipboard.writeText(codigo)
-        .then(() => alert("✅ Código copiado"))
-        .catch(() => {
-            // Fallback
-            const textarea = document.createElement('textarea');
-            textarea.value = codigo;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            alert("✅ Código copiado (modo alternativo)");
-        });
+    // Mostrar
+    alert(`🔐 Tu código de respaldo es:\n\n${codigoFormateado}\n\nGuárdalo para importar tu inventario en otra computadora.`);
 }
 
 function mostrarImportarInventario() {
@@ -616,81 +431,49 @@ function mostrarImportarInventario() {
         return;
     }
     
-    const modalHTML = `
-    <div class="modal">
-        <div class="modal-contenido">
-            <h2>📥 Importar Inventario</h2>
-            
-            <div class="opciones-importar">
-                <div onclick="importarDesdeCodigo()">
-                    <div>🔐</div>
-                    <h3>Desde Código</h3>
-                    <p>Pega un código de respaldo</p>
-                </div>
-                
-                <div onclick="importarDesdeArchivo()">
-                    <div>📁</div>
-                    <h3>Desde Archivo</h3>
-                    <p>Carga un archivo .json</p>
-                </div>
-            </div>
-            
-            <button onclick="cerrarModal()">Cancelar</button>
-        </div>
-    </div>`;
+    const opcion = prompt("¿Cómo quieres importar?\n\n1. Desde código\n2. Desde archivo\n\nEscribe 1 o 2:");
     
-    cerrarModal();
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (opcion === '1') {
+        importarDesdeCodigo();
+    } else if (opcion === '2') {
+        importarDesdeArchivo();
+    }
 }
 
 function importarDesdeCodigo() {
-    const codigo = prompt("Pega tu código de 12 caracteres:");
+    const codigo = prompt("Pega tu código (sin guiones):");
     if (!codigo) return;
     
-    const codigoLimpio = codigo.replace(/-/g, '');
+    const codigoLimpio = codigo.replace(/-/g, '').toUpperCase();
     
-    if (codigoLimpio.length !== 12) {
-        alert("El código debe tener 12 caracteres");
-        return;
-    }
+    const datos = localStorage.getItem(`respaldo_${codigoLimpio}`);
     
-    // Buscar datos del código
-    const codigoData = localStorage.getItem(`respaldo_${codigoLimpio}`);
-    
-    if (!codigoData) {
-        alert("Código no encontrado o expirado");
+    if (!datos) {
+        alert("Código no encontrado");
         return;
     }
     
     try {
-        const datos = JSON.parse(codigoData);
-        const inventarioData = JSON.parse(datos.datos);
+        const datosParseados = JSON.parse(datos);
         
-        if (confirm(`¿Importar ${inventarioData.i.length} productos?`)) {
-            inventario = inventarioData.i;
-            historial = inventarioData.h || [];
+        if (confirm(`¿Importar ${datosParseados.inventario.length} productos?`)) {
+            inventario = datosParseados.inventario;
+            historial = datosParseados.historial || [];
             
-            // Actualizar próximo ID
-            proximoId = inventario.length > 0 ? Math.max(...inventario.map(p => p.id)) + 1 : 1;
-            
-            // Guardar
             guardarTodo();
-            
-            // Actualizar interfaz
             cargarInventarioAdmin();
-            mostrarHistorial();
             
             alert(`✅ Importado: ${inventario.length} productos`);
         }
-        
     } catch (error) {
-        console.error("Error importando:", error);
-        alert("Error al importar el código");
+        alert("Error al importar");
     }
 }
 
 function importarDesdeArchivo() {
-    // Crear input de archivo
+    alert("Para importar desde archivo:\n1. Exporta primero tu inventario actual\n2. En la otra computadora, carga el archivo .json");
+    
+    // Opción simple: crear input de archivo
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -705,29 +488,17 @@ function importarDesdeArchivo() {
             try {
                 const datos = JSON.parse(e.target.result);
                 
-                if (!datos.i || !Array.isArray(datos.i)) {
-                    throw new Error("Archivo inválido");
-                }
-                
-                if (confirm(`¿Importar ${datos.i.length} productos?`)) {
-                    inventario = datos.i;
-                    historial = datos.h || [];
+                if (confirm(`¿Importar ${datos.inventario.length} productos?`)) {
+                    inventario = datos.inventario;
+                    historial = datos.historial || [];
                     
-                    // Actualizar próximo ID
-                    proximoId = inventario.length > 0 ? Math.max(...inventario.map(p => p.id)) + 1 : 1;
-                    
-                    // Guardar
                     guardarTodo();
-                    
-                    // Actualizar interfaz
                     cargarInventarioAdmin();
-                    mostrarHistorial();
                     
                     alert(`✅ Importado: ${inventario.length} productos`);
                 }
-                
             } catch (error) {
-                alert("Error: Archivo inválido o corrupto");
+                alert("Archivo inválido");
             }
         };
         
@@ -746,10 +517,8 @@ function exportarComoArchivo() {
     const datos = {
         inventario: inventario,
         historial: historial,
-        metadata: {
-            fecha: new Date().toISOString(),
-            usuario: usuarioActivo
-        }
+        usuario: usuarioActivo,
+        fecha: new Date().toISOString()
     };
     
     const jsonString = JSON.stringify(datos, null, 2);
@@ -770,6 +539,23 @@ function exportarComoArchivo() {
     alert(`✅ Exportado: ${nombreArchivo}`);
 }
 
-function cerrarModal() {
-    document.querySelectorAll('.modal').forEach(modal => modal.remove());
-}
+// ============================================
+// 9. HACER FUNCIONES GLOBALES
+// ============================================
+
+window.mostrarLogin = mostrarLogin;
+window.regresarAVisita = regresarAVisita;
+window.verificarCredenciales = verificarCredenciales;
+window.cerrarSesion = cerrarSesion;
+window.agregarProducto = agregarProducto;
+window.modificarProducto = modificarProducto;
+window.eliminarProducto = eliminarProducto;
+window.generarCodigoRespaldo = generarCodigoRespaldo;
+window.mostrarImportarInventario = mostrarImportarInventario;
+window.exportarComoArchivo = exportarComoArchivo;
+
+// ============================================
+// 10. INICIAR
+// ============================================
+
+document.addEventListener('DOMContentLoaded', inicializar);
