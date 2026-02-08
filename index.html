@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Sistema de Inventario Local</title>
+    
+    <!-- ENLACE AL CSS -->
+    <link rel="stylesheet" href="estilos.css">
+    
+    <!-- Biblioteca para compresión (necesaria para los códigos) -->
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"></script>
+    
+    <!-- Iconos (opcional) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Estilos básicos que van DENTRO del HTML por si el CSS no carga */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .oculto {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- CONTENEDOR PRINCIPAL -->
+    <div class="contenedor-principal">
+        
+        <!-- MODO VISITANTE (Solo Ver) -->
+        <div id="modoVisita" class="modo-visita">
+            <div class="cabecera">
+                <h1><i class="fas fa-boxes"></i> Sistema de Inventario</h1>
+                <p class="subtitulo">Modo de solo lectura - Para modificar, inicia sesión</p>
+            </div>
+            
+            <div class="indicador-persistencia">
+                <i class="fas fa-database"></i> 
+                <strong>Modo Persistente:</strong> Los datos se guardan en esta computadora
+            </div>
+            
+            <button onclick="mostrarLogin()" class="btn-login">
+                <i class="fas fa-sign-in-alt"></i> Acceder para Modificar
+            </button>
+            
+            <!-- Aquí se mostrará el inventario -->
+            <div id="tablaInventario" class="contenedor-tabla"></div>
+        </div>
+        
+        <!-- FORMULARIO DE LOGIN -->
+        <div id="loginForm" class="login-form oculto">
+            <div class="login-contenedor">
+                <h2><i class="fas fa-lock"></i> Acceso Seguro</h2>
+                <p>Ingresa tus credenciales para modificar el inventario</p>
+                
+                <div class="input-grupo">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="usuario" placeholder="Usuario" autocomplete="username">
+                </div>
+                
+                <div class="input-grupo">
+                    <i class="fas fa-key"></i>
+                    <input type="password" id="clave" placeholder="Contraseña" autocomplete="current-password">
+                </div>
+                
+                <button onclick="verificarCredenciales()" class="btn-entrar">
+                    <i class="fas fa-door-open"></i> Entrar al Sistema
+                </button>
+                
+                <div class="login-info">
+                    <p><i class="fas fa-info-circle"></i> Los datos se guardan en esta computadora específicamente.</p>
+                    <p><i class="fas fa-sync-alt"></i> Para llevar tus datos a otra PC, usa "Generar Código Respaldo".</p>
+                </div>
+                
+                <button onclick="regresarAVisita()" class="btn-regresar">
+                    <i class="fas fa-arrow-left"></i> Regresar a Vista Pública
+                </button>
+            </div>
+        </div>
+        
+        <!-- MODO ADMINISTRADOR (Editar) -->
+        <div id="modoAdmin" class="modo-admin oculto">
+            <div class="admin-cabecera">
+                <h1><i class="fas fa-edit"></i> Modo de Edición</h1>
+                <div class="usuario-info">
+                    <span id="nombreUsuario" class="nombre-usuario"></span>
+                    <button onclick="cerrarSesion()" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Botones de Respaldo -->
+            <div class="botones-respaldo">
+                <button onclick="generarCodigoRespaldo()" class="btn-respaldo">
+                    <i class="fas fa-key"></i> Generar Código Respaldo
+                </button>
+                <button onclick="mostrarImportarInventario()" class="btn-importar">
+                    <i class="fas fa-file-import"></i> Importar Inventario
+                </button>
+                <button onclick="exportarComoArchivo()" class="btn-exportar">
+                    <i class="fas fa-file-export"></i> Exportar como Archivo
+                </button>
+                <button onclick="agregarProducto()" class="btn-agregar">
+                    <i class="fas fa-plus-circle"></i> Nuevo Producto
+                </button>
+            </div>
+            
+            <!-- Tabla de Inventario Editable -->
+            <div id="tablaInventarioAdmin" class="contenedor-tabla"></div>
+            
+            <!-- Historial de Cambios -->
+            <div id="historialContainer" class="historial-container oculto">
+                <h3><i class="fas fa-history"></i> Historial de Cambios</h3>
+                <div id="historial" class="historial-lista"></div>
+            </div>
+        </div>
+        
+        <!-- FOOTER -->
+        <footer class="pie-pagina">
+            <p>Sistema de Inventario Local v1.0 - Los datos se guardan en esta computadora</p>
+            <p class="fecha-actual" id="fechaActual"></p>
+        </footer>
+    </div>
+    
+    <!-- LOS MODALES SE INSERTARÁN AQUÍ AUTOMÁTICAMENTE -->
+    
+    <!-- ENLACE AL JAVASCRIPT PRINCIPAL -->
+    <script src="inventario.js"></script>
+    
+    <!-- Código de inicialización -->
+    <script>
+        // Mostrar fecha actual en el footer
+        document.getElementById('fechaActual').textContent = 
+            new Date().toLocaleDateString('es-MX', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        
+        // Inicializar el sistema cuando cargue la página
+        document.addEventListener('DOMContentLoaded', inicializar);
+    </script>
+</body>
+</html>
