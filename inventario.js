@@ -46,7 +46,7 @@ function cargarDatosPersistentes() {
     
     // Usuarios predeterminados
     usuarios = [
-        { usuario: "admin", clave: "123", nombre: "Administrador" },
+        { usuario: "zona6", clave: "2026", nombre: "Administrador" },
         { usuario: "fulano", clave: "abc", nombre: "Fulano" },
         { usuario: "mengano", clave: "xyz", nombre: "Mengano" }
     ];
