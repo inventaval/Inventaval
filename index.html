@@ -321,24 +321,6 @@
 </div>
 
 <script>
-// Reemplaza console.log con alertas visuales
-function debugLog(mensaje) {
-    console.log(mensaje);
-    document.getElementById('debugContent').textContent = mensaje;
-    document.getElementById('debugPanel').style.display = 'block';
-}
-
-// Sobreescribir console.error
-const originalError = console.error;
-console.error = function(...args) {
-    originalError.apply(console, args);
-    debugLog("ERROR: " + args.join(' '));
-    alert("Error: " + args[0]); // También mostrar alerta
-};
-
-// Verificar si las funciones existen
-debugLog("Script cargado. Probando funciones...");
-debugLog("mostrarLogin existe? " + (typeof mostrarLogin === 'function'));
 </script>
 </body>
     </html>
