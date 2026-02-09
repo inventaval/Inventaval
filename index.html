@@ -3,200 +3,316 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📦 Sistema de Inventario Local</title>
+    <title>🏪 InventaVal - Sistema de Inventario</title>
     <link rel="stylesheet" href="estilos.css">
-    
-    <!-- Iconos de FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <style>
-        /* Estilos críticos que cargan primero */
-        .oculto { 
-            display: none !important; 
+        /* Estilos críticos iniciales */
+        :root {
+            --verde-comeval: #2e7d32;
+            --verde-claro: #4caf50;
+            --naranja-comeval: #ff9800;
+            --naranja-claro: #ffb74d;
+            --blanco-5: #f8f9fa;
+            --texto-oscuro: #333333;
+            --gris-borde: #dee2e6;
         }
+        
+        .oculto { display: none !important; }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
             margin: 0;
-            padding: 20px;
-        }
-        
-        .contenedor {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
+            padding: 0;
+            background: var(--blanco-5);
+            color: var(--texto-oscuro);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
     </style>
 </head>
 <body>
-    <!-- CONTENEDOR PRINCIPAL -->
-    <div class="contenedor">
-        
-        <!-- ========== MODO VISITANTE (SOLO VER) ========== -->
-        <div id="modoVisita" class="modo-visita">
-            <div class="cabecera-visita">
-                <h1><i class="fas fa-boxes"></i> Sistema de Inventario</h1>
-                <p class="subtitulo">Modo de solo lectura - Para modificar, inicia sesión</p>
-            </div>
-            
-            <div class="indicador-persistencia">
-                <i class="fas fa-database"></i> 
-                <span><strong>Modo Persistente:</strong> Los datos se guardan en esta computadora</span>
-            </div>
-            
-            <button onclick="mostrarLogin()" class="btn-login">
-                <i class="fas fa-sign-in-alt"></i> Acceder para Modificar
-            </button>
-            
-            <!-- Inventario público -->
-            <div id="tablaInventario" class="contenedor-tabla">
-                <!-- JavaScript cargará aquí los productos -->
-            </div>
-            
-            <div class="info-visita">
-                <p><i class="fas fa-info-circle"></i> Para comenzar, haz clic en "Acceder para Modificar"</p>
-            </div>
-        </div>
-        
-        <!-- ========== FORMULARIO DE LOGIN ========== -->
-        <div id="loginForm" class="login-form oculto">
-            <div class="login-contenedor">
-                <div class="login-cabecera">
-                    <h2><i class="fas fa-lock"></i> Acceso Seguro</h2>
-                    <p>Ingresa tus credenciales para modificar el inventario</p>
+    <!-- ========== HEADER VERDE ========== -->
+    <header class="header-verde">
+        <div class="container">
+            <div class="logo-titulo">
+                <div class="logo">
+                    <i class="fas fa-warehouse"></i>
                 </div>
-                
-                <div class="login-inputs">
-                    <div class="input-grupo">
-                        <i class="fas fa-user"></i>
-                        <input type="text" id="usuario" placeholder="Usuario" autocomplete="username">
-                    </div>
-                    
-                    <div class="input-grupo">
-                        <i class="fas fa-key"></i>
-                        <input type="password" id="clave" placeholder="Contraseña" autocomplete="current-password">
-                    </div>
+                <div class="titulo">
+                    <h1>INVENTAVAL</h1>
+                    <p class="subtitulo">Sistema Profesional de Inventario</p>
                 </div>
-                
-                <div class="login-botones">
-                    <button onclick="verificarCredenciales()" class="btn-entrar">
-                        <i class="fas fa-door-open"></i> Entrar al Sistema
-                    </button>
-                    
-                    <button onclick="regresarAVisita()" class="btn-regresar">
-                        <i class="fas fa-arrow-left"></i> Regresar a Vista Pública
-                    </button>
+            </div>
+            
+            <div class="header-info">
+                <div class="info-item" id="infoUsuario">
+                    <i class="fas fa-user"></i>
+                    <span>No logueado</span>
                 </div>
-                
-                <div class="login-info">
-                    <div class="info-item">
-                        <i class="fas fa-user-shield"></i>
-                        <div>
-                            <strong>Credenciales de prueba:</strong>
-                            <p>Usuario: <code>admin</code> - Clave: <code>123</code></p>
-                            <p>Usuario: <code>fulano</code> - Clave: <code>abc</code></p>
-                        </div>
-                    </div>
-                    
-                    <div class="info-item">
-                        <i class="fas fa-sync-alt"></i>
-                        <div>
-                            <strong>Datos persistentes:</strong>
-                            <p>Los cambios se guardan automáticamente en esta computadora</p>
-                        </div>
-                    </div>
+                <div class="info-item" id="infoProductos">
+                    <i class="fas fa-boxes"></i>
+                    <span>0 productos</span>
                 </div>
             </div>
         </div>
-        
-        <!-- ========== MODO ADMINISTRADOR (EDITAR) ========== -->
-        <div id="modoAdmin" class="modo-admin oculto">
-            <div class="admin-cabecera">
-                <div class="admin-titulo">
-                    <h1><i class="fas fa-edit"></i> Modo de Edición</h1>
-                    <div class="usuario-activo">
-                        <i class="fas fa-user-circle"></i>
-                        <span id="nombreUsuario">Administrador</span>
-                    </div>
-                </div>
-                
-                <button onclick="cerrarSesion()" class="btn-logout">
-                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+    </header>
+
+    <!-- ========== BARRA HERRAMIENTAS ========== -->
+    <nav class="barra-herramientas">
+        <div class="container">
+            <div class="herramientas-izq" id="herramientasVisita">
+                <button onclick="mostrarLogin()" class="btn-herramienta btn-login">
+                    <i class="fas fa-sign-in-alt"></i> Acceder al Sistema
                 </button>
             </div>
             
-            <!-- Barra de herramientas -->
-            <div class="herramientas-admin">
-                <div class="herramientas-titulo">
-                    <h3><i class="fas fa-tools"></i> Herramientas</h3>
-                </div>
-                
-                <div class="herramientas-botones">
-                    <button onclick="agregarProducto()" class="btn-herramienta btn-agregar">
+            <div class="herramientas-der oculto" id="herramientasAdmin">
+                <div class="grupo-herramientas">
+                    <button onclick="agregarProducto()" class="btn-herramienta btn-accion">
                         <i class="fas fa-plus-circle"></i> Nuevo Producto
                     </button>
                     
-                    <button onclick="generarCodigoRespaldo()" class="btn-herramienta btn-respaldo">
-                        <i class="fas fa-key"></i> Generar Código
+                    <div class="dropdown">
+                        <button class="btn-herramienta btn-accion">
+                            <i class="fas fa-sort"></i> Ordenar
+                        </button>
+                        <div class="dropdown-contenido">
+                            <a onclick="ordenarPor('marca')"><i class="fas fa-tag"></i> Por Marca</a>
+                            <a onclick="ordenarPor('vencimiento')"><i class="fas fa-calendar-alt"></i> Por Vencimiento</a>
+                            <a onclick="ordenarPor('inteligente')"><i class="fas fa-brain"></i> Inteligente</a>
+                            <a onclick="ordenarPor('nombre')"><i class="fas fa-font"></i> Por Nombre</a>
+                        </div>
+                    </div>
+                    
+                    <div class="dropdown">
+                        <button class="btn-herramienta btn-accion">
+                            <i class="fas fa-file-export"></i> Exportar
+                        </button>
+                        <div class="dropdown-contenido">
+                            <a onclick="exportarAPDF()"><i class="fas fa-file-pdf"></i> PDF para Imprimir</a>
+                            <a onclick="exportarAExcel()"><i class="fas fa-file-excel"></i> Excel (.xlsx)</a>
+                            <a onclick="exportarAImagen()"><i class="fas fa-image"></i> Imagen (.png)</a>
+                            <a onclick="imprimirDirecto()"><i class="fas fa-print"></i> Imprimir Directo</a>
+                        </div>
+                    </div>
+                    
+                    <button onclick="generarCodigoRespaldo()" class="btn-herramienta btn-accion">
+                        <i class="fas fa-key"></i> Código Respaldo
                     </button>
                     
-                    <button onclick="mostrarImportarInventario()" class="btn-herramienta btn-importar">
+                    <button onclick="mostrarImportarInventario()" class="btn-herramienta btn-accion">
                         <i class="fas fa-file-import"></i> Importar
                     </button>
                     
-                    <button onclick="exportarComoArchivo()" class="btn-herramienta btn-exportar">
-                        <i class="fas fa-file-export"></i> Exportar
+                    <button onclick="cerrarSesion()" class="btn-herramienta btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Salir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ========== CONTENIDO PRINCIPAL ========== -->
+    <main class="contenido-principal">
+        <div class="container">
+            <!-- MODO VISITA (SOLO LECTURA) -->
+            <section id="modoVisita" class="seccion-inventario">
+                <div class="seccion-cabecera">
+                    <h2><i class="fas fa-eye"></i> Vista de Inventario</h2>
+                    <p class="descripcion">Modo de solo lectura. Para modificar productos, accede al sistema.</p>
+                </div>
+                
+                <div id="tablaInventario" class="contenedor-tabla">
+                    <!-- Tabla se carga por JavaScript -->
+                </div>
+                
+                <div class="paginacion" id="paginacionVisita">
+                    <!-- Paginación se genera por JavaScript -->
+                </div>
+            </section>
+            
+            <!-- MODO ADMIN (EDICIÓN) -->
+            <section id="modoAdmin" class="seccion-inventario oculto">
+                <div class="seccion-cabecera">
+                    <h2><i class="fas fa-edit"></i> Modo de Edición</h2>
+                    <div class="estadisticas">
+                        <span id="contadorProductos">0 productos</span>
+                        <span id="contadorPaginas">Página 1 de 1</span>
+                    </div>
+                </div>
+                
+                <div class="filtros-busqueda">
+                    <div class="buscador">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="buscarProducto" placeholder="Buscar producto..." 
+                               onkeyup="filtrarProductos()">
+                    </div>
+                    <div class="filtros">
+                        <select id="filtroMarca" onchange="filtrarProductos()">
+                            <option value="">Todas las marcas</option>
+                        </select>
+                        <select id="filtroVencimiento" onchange="filtrarProductos()">
+                            <option value="">Todos los vencimientos</option>
+                            <option value="proximo">Próximos a vencer</option>
+                            <option value="vencido">Vencidos</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="tablaInventarioAdmin" class="contenedor-tabla">
+                    <!-- Tabla editable se carga por JavaScript -->
+                </div>
+                
+                <div class="paginacion" id="paginacionAdmin">
+                    <!-- Paginación se genera por JavaScript -->
+                </div>
+            </section>
+            
+            <!-- FORMULARIO LOGIN -->
+            <section id="loginForm" class="seccion-login oculto">
+                <div class="login-contenedor">
+                    <div class="login-cabecera">
+                        <h2><i class="fas fa-lock"></i> Acceso al Sistema</h2>
+                        <p>Ingresa tus credenciales para administrar el inventario</p>
+                    </div>
+                    
+                    <div class="login-formulario">
+                        <div class="input-grupo">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="usuario" placeholder="Nombre de usuario" autocomplete="username">
+                        </div>
+                        
+                        <div class="input-grupo">
+                            <i class="fas fa-key"></i>
+                            <input type="password" id="clave" placeholder="Contraseña" autocomplete="current-password">
+                        </div>
+                        
+                        <div class="login-botones">
+                            <button onclick="verificarCredenciales()" class="btn-login-form">
+                                <i class="fas fa-door-open"></i> Iniciar Sesión
+                            </button>
+                            <button onclick="regresarAVisita()" class="btn-cancelar">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="login-info">
+                        <h3><i class="fas fa-info-circle"></i> Credenciales de Prueba</h3>
+                        <div class="credenciales">
+                            <div class="credencial">
+                                <strong>Administrador:</strong>
+                                <code>admin</code> / <code>123</code>
+                            </div>
+                            <div class="credencial">
+                                <strong>Usuario 1:</strong>
+                                <code>fulano</code> / <code>abc</code>
+                            </div>
+                            <div class="credencial">
+                                <strong>Usuario 2:</strong>
+                                <code>mengano</code> / <code>xyz</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- HISTORIAL DE CAMBIOS -->
+            <section id="historialContainer" class="seccion-historial oculto">
+                <div class="seccion-cabecera">
+                    <h2><i class="fas fa-history"></i> Historial de Cambios</h2>
+                    <button onclick="toggleHistorial()" class="btn-cerrar-historial">
+                        <i class="fas fa-times"></i> Cerrar Historial
+                    </button>
+                </div>
+                <div id="historial" class="lista-historial">
+                    <!-- Historial se carga por JavaScript -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- ========== FOOTER NARANJA ========== -->
+    <footer class="footer-naranja">
+        <div class="container">
+            <div class="footer-contenido">
+                <div class="footer-info">
+                    <h3>INVENTAVAL v2.0</h3>
+                    <p>Sistema profesional de gestión de inventario</p>
+                    <p class="footer-dato" id="fechaActual">Cargando fecha...</p>
+                </div>
+                
+                <div class="footer-estadisticas">
+                    <div class="estadistica">
+                        <i class="fas fa-database"></i>
+                        <div>
+                            <span class="valor" id="footerTotalProductos">0</span>
+                            <span class="etiqueta">Productos</span>
+                        </div>
+                    </div>
+                    <div class="estadistica">
+                        <i class="fas fa-exchange-alt"></i>
+                        <div>
+                            <span class="valor" id="footerTotalMovimientos">0</span>
+                            <span class="etiqueta">Movimientos</span>
+                        </div>
+                    </div>
+                    <div class="estadistica">
+                        <i class="fas fa-user-clock"></i>
+                        <div>
+                            <span class="valor" id="footerSesionActiva">No</span>
+                            <span class="etiqueta">Sesión Activa</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="footer-acciones">
+                    <button onclick="mostrarAcercaDe()" class="btn-footer">
+                        <i class="fas fa-info-circle"></i> Acerca de
+                    </button>
+                    <button onclick="exportarComoArchivo()" class="btn-footer">
+                        <i class="fas fa-download"></i> Exportar JSON
                     </button>
                 </div>
             </div>
             
-            <!-- Inventario editable -->
-            <div class="inventario-admin">
-                <h3><i class="fas fa-boxes"></i> Inventario Actual</h3>
-                <div id="tablaInventarioAdmin" class="contenedor-tabla">
-                    <!-- JavaScript cargará aquí los productos editables -->
-                </div>
-            </div>
-            
-            <!-- Historial de cambios -->
-            <div id="historialContainer" class="historial-container oculto">
-                <div class="historial-cabecera">
-                    <h3><i class="fas fa-history"></i> Historial de Cambios</h3>
-                    <span class="historial-contador" id="contadorHistorial">0 movimientos</span>
-                </div>
-                <div id="historial" class="historial-lista">
-                    <!-- JavaScript cargará aquí el historial -->
-                </div>
-            </div>
-            
-            <div class="admin-footer">
-                <p><i class="fas fa-info-circle"></i> Sistema de Inventario Local - Los datos se guardan en esta computadora</p>
+            <div class="footer-copyright">
+                <p>© 2024 InventaVal - Todos los derechos reservados</p>
+                <p class="version">Versión: 2.0.0 | Última actualización: <span id="fechaActualizacion"></span></p>
             </div>
         </div>
-    </div>
-    
-    <!-- LOS MODALES SE INSERTARÁN AQUÍ AUTOMÁTICAMENTE POR JAVASCRIPT -->
-    
-    <!-- Cargar JavaScript -->
+    </footer>
+
+    <!-- ========== MODALES (SE INSERTAN POR JS) ========== -->
+    <div id="modalesContainer"></div>
+
+    <!-- ========== NOTIFICACIONES (SE INSERTAN POR JS) ========== -->
+    <div id="notificacionesContainer"></div>
+
+    <!-- ========== JAVASCRIPT ========== -->
     <script src="inventario.js"></script>
     
-    <!-- Script de inicialización -->
+    <!-- Scripts de inicialización -->
     <script>
-        // Mostrar mensaje de carga
-        console.log("🔄 Cargando sistema de inventario...");
-        
-        // Mostrar fecha actual en consola
-        console.log("📅 " + new Date().toLocaleDateString('es-MX', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        }));
+        // Actualizar fecha en footer
+        document.addEventListener('DOMContentLoaded', function() {
+            const fecha = new Date();
+            const opciones = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            document.getElementById('fechaActual').textContent = 
+                fecha.toLocaleDateString('es-VE', opciones);
+            
+            document.getElementById('fechaActualizacion').textContent = 
+                fecha.toLocaleDateString('es-VE');
+            
+            console.log('🏪 InventaVal - Sistema cargado correctamente');
+        });
     </script>
 </body>
-</html>
+    </html>
