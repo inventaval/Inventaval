@@ -1,561 +1,508 @@
-// ============================================
-// inventario.js - SISTEMA COMPLETO FUNCIONAL
-// ============================================
-
-// VARIABLES GLOBALES
-let inventario = [];
-let historial = [];
-let usuarios = [];
-let usuarioActivo = null;
-let proximoId = 1;
-
-// ============================================
-// 1. INICIALIZACIÓN
-// ============================================
-
-function inicializar() {
-    console.log("🚀 Sistema de inventario iniciando...");
+                <td class="col-marca">
+                    ${producto.marca === "Sin marca" 
+                        ? '<span class="sin-marca">Sin marca</span>' 
+                        : `<span class="badge-marca ${producto.marca.toLowerCase()}">${producto.marca}</span>`}
+                </td>
+                <td class="col-acciones">
+                    <div class="acciones-producto">
+                        <button onclick="editarProducto(${producto.id})" class="btn-editar" title="Editar producto">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="eliminarProducto(${producto.id})" class="btn-eliminar" title="Eliminar producto">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button onclick="mostrarHistorialProducto(${producto.id})" class="btn-historial" title="Ver historial">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        <button onclick="ajustarStock(${producto.id})" class="btn-ajustar" title="Ajustar stock">
+                            <i class="fas fa-exchange-alt"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
     
-    cargarDatosPersistentes();
-    verificarSesionActiva();
-    actualizarInterfaz();
+    html += `</tbody></table>`;
+    container.innerHTML = html;
     
-    console.log("✅ Sistema listo");
+    // Generar paginación
+    generarPaginacion('paginacionAdmin', productosFiltrados);
+    
+    // Actualizar contadores
+    actualizarContadorProductos();
+    actualizarContadorPaginas(productosFiltrados);
 }
 
-function cargarDatosPersistentes() {
-    // Cargar inventario
-    const inventarioGuardado = localStorage.getItem('inventario_persistente');
-    if (inventarioGuardado) {
-        inventario = JSON.parse(inventarioGuardado);
-        proximoId = inventario.length > 0 ? Math.max(...inventario.map(p => p.id)) + 1 : 1;
-    } else {
-        // Datos de ejemplo
-        inventario = [
-            { id: 1, nombre: "Refresco Coca-Cola 2L", cantidad: 20, unidad: "bultos", categoria: "Bebidas", creadoPor: "admin", fechaCreacion: "2024-01-01", ultimaMod: "Nunca" },
-            { id: 2, nombre: "Papas Sabritas", cantidad: 15, unidad: "paquetes", categoria: "Botanas", creadoPor: "admin", fechaCreacion: "2024-01-01", ultimaMod: "Nunca" },
-            { id: 3, nombre: "Galletas Emperador", cantidad: 30, unidad: "cajas", categoria: "Dulces", creadoPor: "admin", fechaCreacion: "2024-01-01", ultimaMod: "Nunca" }
-        ];
-        proximoId = 4;
+function cargarFiltros() {
+    const filtroMarca = document.getElementById('filtroMarca');
+    if (!filtroMarca) return;
+    
+    // Obtener marcas únicas
+    const marcas = [...new Set(inventario.map(p => p.marca))].filter(m => m && m !== "Sin marca");
+    
+    // Limpiar opciones excepto la primera
+    while (filtroMarca.options.length > 1) {
+        filtroMarca.remove(1);
     }
     
-    // Cargar historial
-    const historialGuardado = localStorage.getItem('historial_persistente');
-    historial = historialGuardado ? JSON.parse(historialGuardado) : [];
-    
-    // Usuarios
-    usuarios = [
-        { usuario: "admin", clave: "123", nombre: "Administrador" },
-        { usuario: "fulano", clave: "abc", nombre: "Fulano" },
-        { usuario: "mengano", clave: "xyz", nombre: "Mengano" }
-    ];
+    // Agregar marcas
+    marcas.sort().forEach(marca => {
+        const option = document.createElement('option');
+        option.value = marca;
+        option.textContent = marca;
+        filtroMarca.appendChild(option);
+    });
 }
 
-function verificarSesionActiva() {
-    const sesion = sessionStorage.getItem('sesion_usuario_activo');
-    if (sesion) {
-        usuarioActivo = sesion;
-        mostrarModoAdmin();
-    }
-}
-
-function actualizarInterfaz() {
-    if (usuarioActivo) {
-        mostrarModoAdmin();
-    } else {
-        cargarInventario();
-    }
-}
-
-// ============================================
-// 2. LOGIN (¡ESTA PARTE FUNCIONA!)
-// ============================================
-
-function mostrarLogin() {
-    console.log("🔓 Botón de login presionado");
+function aplicarFiltros() {
+    let productosFiltrados = [...inventario];
     
-    // Ocultar modo visita
-    const modoVisita = document.getElementById('modoVisita');
-    if (modoVisita) {
-        modoVisita.classList.add('oculto');
-        console.log("✅ Modo visita ocultado");
+    // Aplicar búsqueda
+    const busqueda = document.getElementById('buscarProducto')?.value.toLowerCase() || '';
+    if (busqueda) {
+        productosFiltrados = productosFiltrados.filter(p => 
+            p.nombre.toLowerCase().includes(busqueda) ||
+            p.marca.toLowerCase().includes(busqueda)
+        );
     }
     
-    // Mostrar formulario login
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.classList.remove('oculto');
-        console.log("✅ Formulario login mostrado");
-        
-        // Enfocar campo usuario
-        setTimeout(() => {
-            const usuarioInput = document.getElementById('usuario');
-            if (usuarioInput) {
-                usuarioInput.focus();
-            }
-        }, 100);
-    } else {
-        console.error("❌ No se encontró #loginForm");
-    }
-}
-
-function regresarAVisita() {
-    // Ocultar formulario login
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.classList.add('oculto');
+    // Aplicar filtro de marca
+    const marcaFiltro = document.getElementById('filtroMarca')?.value;
+    if (marcaFiltro) {
+        productosFiltrados = productosFiltrados.filter(p => p.marca === marcaFiltro);
     }
     
-    // Mostrar modo visita
-    const modoVisita = document.getElementById('modoVisita');
-    if (modoVisita) {
-        modoVisita.classList.remove('oculto');
+    // Aplicar filtro de vencimiento
+    const vencimientoFiltro = document.getElementById('filtroVencimiento')?.value;
+    if (vencimientoFiltro === "proximo") {
+        productosFiltrados = productosFiltrados.filter(p => {
+            const estado = obtenerEstadoVencimiento(p.vencimiento);
+            return estado.estado === "proximo";
+        });
+    } else if (vencimientoFiltro === "vencido") {
+        productosFiltrados = productosFiltrados.filter(p => {
+            const estado = obtenerEstadoVencimiento(p.vencimiento);
+            return estado.estado === "vencido";
+        });
     }
+    
+    // Aplicar ordenamiento
+    productosFiltrados = ordenarProductos(productosFiltrados, ordenActual);
+    
+    return productosFiltrados;
 }
 
-function verificarCredenciales() {
-    const usuario = document.getElementById('usuario').value.trim();
-    const clave = document.getElementById('clave').value;
+function filtrarProductos() {
+    paginaActual = 1; // Volver a primera página al filtrar
+    cargarInventarioAdmin();
+}
+
+// ===== 5. SISTEMA DE PAGINACIÓN =====
+function obtenerProductosPagina(pagina, productosList = null) {
+    const productos = productosList || inventario;
+    const inicio = (pagina - 1) * CONFIG.productosPorPagina;
+    const fin = inicio + CONFIG.productosPorPagina;
+    return productos.slice(inicio, fin);
+}
+
+function generarPaginacion(containerId, productosList = null) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
     
-    if (!usuario || !clave) {
-        alert("Por favor, completa ambos campos");
+    const productos = productosList || inventario;
+    const totalPaginas = Math.ceil(productos.length / CONFIG.productosPorPagina);
+    
+    if (totalPaginas <= 1) {
+        container.innerHTML = '';
         return;
     }
     
-    const usuarioValido = usuarios.find(u => 
-        u.usuario.toLowerCase() === usuario.toLowerCase() && u.clave === clave
-    );
+    let html = `
+        <button onclick="cambiarPagina('${containerId}', 1)" ${paginaActual === 1 ? 'disabled' : ''}>
+            <i class="fas fa-angle-double-left"></i>
+        </button>
+        <button onclick="cambiarPagina('${containerId}', ${paginaActual - 1})" ${paginaActual === 1 ? 'disabled' : ''}>
+            <i class="fas fa-angle-left"></i>
+        </button>
+    `;
     
-    if (usuarioValido) {
-        usuarioActivo = usuarioValido.usuario;
-        sessionStorage.setItem('sesion_usuario_activo', usuarioActivo);
-        mostrarModoAdmin();
-        mostrarNotificacion(`Bienvenido, ${usuarioValido.nombre}`);
-    } else {
-        alert("Credenciales incorrectas");
-        document.getElementById('clave').value = '';
-        document.getElementById('clave').focus();
+    // Mostrar máximo 5 páginas alrededor de la actual
+    let inicio = Math.max(1, paginaActual - 2);
+    let fin = Math.min(totalPaginas, paginaActual + 2);
+    
+    if (inicio > 1) {
+        html += `<span class="puntos">...</span>`;
     }
+    
+    for (let i = inicio; i <= fin; i++) {
+        html += `
+            <button onclick="cambiarPagina('${containerId}', ${i})" class="${i === paginaActual ? 'activa' : ''}">
+                ${i}
+            </button>
+        `;
+    }
+    
+    if (fin < totalPaginas) {
+        html += `<span class="puntos">...</span>`;
+    }
+    
+    html += `
+        <button onclick="cambiarPagina('${containerId}', ${paginaActual + 1})" ${paginaActual === totalPaginas ? 'disabled' : ''}>
+            <i class="fas fa-angle-right"></i>
+        </button>
+        <button onclick="cambiarPagina('${containerId}', ${totalPaginas})" ${paginaActual === totalPaginas ? 'disabled' : ''}>
+            <i class="fas fa-angle-double-right"></i>
+        </button>
+    `;
+    
+    container.innerHTML = html;
 }
 
-function mostrarModoAdmin() {
-    console.log("🖥️ Mostrando modo administrador...");
+function cambiarPagina(containerId, nuevaPagina) {
+    const totalPaginas = Math.ceil(inventario.length / CONFIG.productosPorPagina);
     
-    // Ocultar otros modos
-    document.getElementById('modoVisita')?.classList.add('oculto');
-    document.getElementById('loginForm')?.classList.add('oculto');
+    if (nuevaPagina < 1 || nuevaPagina > totalPaginas) {
+        return;
+    }
     
-    // Mostrar modo admin
-    const modoAdmin = document.getElementById('modoAdmin');
-    if (modoAdmin) {
-        modoAdmin.classList.remove('oculto');
-        
-        // Mostrar nombre de usuario
-        const usuarioInfo = usuarios.find(u => u.usuario === usuarioActivo);
-        if (usuarioInfo) {
-            document.getElementById('nombreUsuario').textContent = usuarioInfo.nombre;
-        }
-        
-        // Cargar inventario
+    paginaActual = nuevaPagina;
+    
+    if (containerId.includes('Admin')) {
         cargarInventarioAdmin();
-        mostrarHistorial();
-        
-        console.log("✅ Modo admin activado");
-    }
-}
-
-function cerrarSesion() {
-    if (confirm("¿Estás seguro de cerrar sesión?")) {
-        usuarioActivo = null;
-        sessionStorage.removeItem('sesion_usuario_activo');
-        
-        document.getElementById('modoAdmin').classList.add('oculto');
-        document.getElementById('modoVisita').classList.remove('oculto');
-        
+    } else {
         cargarInventario();
-        mostrarNotificacion("Sesión cerrada");
     }
 }
 
-// ============================================
-// 3. INVENTARIO (MODO VISITA)
-// ============================================
-
-function cargarInventario() {
-    const container = document.getElementById('tablaInventario');
-    if (!container) return;
+function actualizarContadorPaginas(productosList = null) {
+    const contador = document.getElementById('contadorPaginas');
+    if (!contador) return;
     
-    if (inventario.length === 0) {
-        container.innerHTML = '<p>No hay productos en inventario</p>';
-        return;
-    }
-    
-    let html = '<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Categoría</th><th>Última mod</th></tr></thead><tbody>';
-    
-    inventario.forEach(producto => {
-        html += `
-        <tr>
-            <td>${producto.nombre}</td>
-            <td>${producto.cantidad} ${producto.unidad}</td>
-            <td>${producto.categoria}</td>
-            <td>${producto.ultimaMod || 'Nunca'}</td>
-        </tr>`;
-    });
-    
-    html += '</tbody></table>';
-    container.innerHTML = html;
+    const productos = productosList || inventario;
+    const totalPaginas = Math.ceil(productos.length / CONFIG.productosPorPagina);
+    contador.textContent = `Página ${paginaActual} de ${totalPaginas}`;
 }
 
-// ============================================
-// 4. INVENTARIO (MODO ADMIN)
-// ============================================
-
-function cargarInventarioAdmin() {
-    const container = document.getElementById('tablaInventarioAdmin');
-    if (!container) return;
-    
-    if (inventario.length === 0) {
-        container.innerHTML = '<p>No hay productos. Agrega el primero.</p>';
-        return;
-    }
-    
-    let html = '<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Categoría</th><th>Acciones</th></tr></thead><tbody>';
-    
-    inventario.forEach((producto, index) => {
-        html += `
-        <tr>
-            <td>${producto.nombre}</td>
-            <td>${producto.cantidad} ${producto.unidad}</td>
-            <td>${producto.categoria}</td>
-            <td>
-                <button onclick="modificarProducto(${index})">✏️ Editar</button>
-                <button onclick="eliminarProducto(${index})">🗑️ Eliminar</button>
-            </td>
-        </tr>`;
-    });
-    
-    html += '</tbody></table>';
-    container.innerHTML = html;
+// ===== 6. SISTEMA DE ORDENAMIENTO =====
+function ordenarPor(tipo) {
+    ordenActual = tipo;
+    mostrarNotificacion(`🔍 Ordenando por: ${obtenerNombreOrden(tipo)}`, "info");
+    filtrarProductos();
 }
 
-function modificarProducto(index) {
-    const producto = inventario[index];
+function obtenerNombreOrden(tipo) {
+    const nombres = {
+        'nombre': 'Nombre',
+        'marca': 'Marca',
+        'vencimiento': 'Fecha de vencimiento',
+        'inteligente': 'Orden inteligente'
+    };
+    return nombres[tipo] || tipo;
+}
+
+function ordenarProductos(productos, tipo) {
+    const productosCopia = [...productos];
+    
+    switch(tipo) {
+        case 'nombre':
+            return productosCopia.sort((a, b) => a.nombre.localeCompare(b.nombre));
+            
+        case 'marca':
+            return productosCopia.sort((a, b) => a.marca.localeCompare(b.marca));
+            
+        case 'vencimiento':
+            return productosCopia.sort((a, b) => {
+                // Los que no tienen vencimiento van al final
+                if (!a.vencimiento && !b.vencimiento) return 0;
+                if (!a.vencimiento) return 1;
+                if (!b.vencimiento) return -1;
+                return new Date(a.vencimiento) - new Date(b.vencimiento);
+            });
+            
+        case 'inteligente':
+        default:
+            return productosCopia.sort((a, b) => {
+                // Prioridad 1: Productos vencidos o próximos a vencer
+                const estadoA = obtenerEstadoVencimiento(a.vencimiento);
+                const estadoB = obtenerEstadoVencimiento(b.vencimiento);
+                
+                const prioridadA = estadoA.estado === 'vencido' ? 0 : 
+                                 estadoA.estado === 'proximo' ? 1 : 2;
+                const prioridadB = estadoB.estado === 'vencido' ? 0 : 
+                                 estadoB.estado === 'proximo' ? 1 : 2;
+                
+                if (prioridadA !== prioridadB) return prioridadA - prioridadB;
+                
+                // Prioridad 2: Stock bajo
+                const stockA = obtenerEstadoStock(a.cantidad);
+                const stockB = obtenerEstadoStock(b.cantidad);
+                
+                const prioridadStockA = stockA === 'estado-critico' ? 0 : 
+                                      stockA === 'estado-bajo' ? 1 : 2;
+                const prioridadStockB = stockB === 'estado-critico' ? 0 : 
+                                      stockB === 'estado-bajo' ? 1 : 2;
+                
+                if (prioridadStockA !== prioridadStockB) return prioridadStockA - prioridadStockB;
+                
+                // Prioridad 3: Nombre alfabético
+                return a.nombre.localeCompare(b.nombre);
+            });
+    }
+}
+
+// ===== 7. GESTIÓN CRUD DE PRODUCTOS =====
+function agregarProducto() {
+    mostrarModalProducto(null);
+}
+
+function editarProducto(id) {
+    const producto = inventario.find(p => p.id === id);
+    if (producto) {
+        mostrarModalProducto(producto);
+    }
+}
+
+function eliminarProducto(id) {
+    const producto = inventario.find(p => p.id === id);
     if (!producto) return;
     
-    const nuevaCantidad = prompt(`Nueva cantidad para ${producto.nombre}:`, producto.cantidad);
+    if (confirm(`¿Estás seguro de eliminar "${producto.nombre}"?`)) {
+        const productoEliminado = inventario.find(p => p.id === id);
+        const indice = inventario.findIndex(p => p.id === id);
+        
+        if (indice !== -1) {
+            // Registrar en historial ANTES de eliminar
+            registrarEnHistorial(
+                usuarioActivo,
+                productoEliminado.nombre,
+                'Eliminación',
+                productoEliminado.cantidad,
+                0,
+                productoEliminado.cantidad, // Cambio total (todo a 0)
+                'Producto eliminado del inventario'
+            );
+            
+            inventario.splice(indice, 1);
+            guardarTodo();
+            cargarInventarioAdmin();
+            mostrarNotificacion(`🗑️ Producto "${producto.nombre}" eliminado`, "exito");
+        }
+    }
+}
+
+function ajustarStock(id) {
+    const producto = inventario.find(p => p.id === id);
+    if (!producto) return;
+    
+    const nuevaCantidad = prompt(`Ajustar stock de "${producto.nombre}"\nCantidad actual: ${producto.cantidad} ${producto.unidad}\n\nIngresa la nueva cantidad:`, producto.cantidad);
+    
     if (nuevaCantidad === null) return;
     
     const cantidadNum = parseInt(nuevaCantidad);
     if (isNaN(cantidadNum) || cantidadNum < 0) {
-        alert("Cantidad inválida");
+        mostrarNotificacion("❌ Cantidad inválida", "error");
         return;
     }
     
-    // Registrar cambio
-    const registro = {
-        fecha: new Date().toLocaleString('es-MX'),
-        usuario: usuarioActivo,
-        producto: producto.nombre,
-        anterior: producto.cantidad,
-        nuevo: cantidadNum,
-        diferencia: cantidadNum - producto.cantidad
-    };
+    const cantidadAnterior = producto.cantidad;
+    const cambio = cantidadNum - cantidadAnterior;
     
-    historial.unshift(registro);
-    
-    // Actualizar producto
     producto.cantidad = cantidadNum;
-    producto.ultimaMod = registro.fecha;
+    producto.ultimaMod = new Date().toLocaleString('es-VE');
     
-    // Guardar
-    guardarTodo();
-    
-    // Actualizar interfaz
-    cargarInventarioAdmin();
-    mostrarHistorial();
-    
-    mostrarNotificacion(`✅ ${producto.nombre} actualizado`);
-}
-
-function eliminarProducto(index) {
-    const producto = inventario[index];
-    if (!producto) return;
-    
-    if (confirm(`¿Eliminar ${producto.nombre}?`)) {
-        inventario.splice(index, 1);
-        guardarTodo();
-        cargarInventarioAdmin();
-        mostrarNotificacion(`🗑️ ${producto.nombre} eliminado`);
-    }
-}
-
-function agregarProducto() {
-    const nombre = prompt("Nombre del producto:");
-    if (!nombre) return;
-    
-    const cantidad = parseInt(prompt("Cantidad inicial:") || "0");
-    const unidad = prompt("Unidad (bultos, cajas, etc.):") || "unidades";
-    const categoria = prompt("Categoría:") || "General";
-    
-    const nuevoProducto = {
-        id: proximoId++,
-        nombre: nombre,
-        cantidad: cantidad,
-        unidad: unidad,
-        categoria: categoria,
-        creadoPor: usuarioActivo,
-        fechaCreacion: new Date().toLocaleString('es-MX'),
-        ultimaMod: "Nunca"
-    };
-    
-    inventario.push(nuevoProducto);
     guardarTodo();
     cargarInventarioAdmin();
     
-    mostrarNotificacion(`✅ Producto "${nombre}" agregado`);
+    // Registrar en historial
+    registrarEnHistorial(
+        usuarioActivo,
+        producto.nombre,
+        'Ajuste de stock',
+        cantidadAnterior,
+        cantidadNum,
+        cambio,
+        `Stock ajustado de ${cantidadAnterior} a ${cantidadNum} ${producto.unidad}`
+    );
+    
+    mostrarNotificacion(`📊 Stock de "${producto.nombre}" actualizado`, "exito");
 }
 
-// ============================================
-// 5. HISTORIAL
-// ============================================
-
-function mostrarHistorial() {
-    const container = document.getElementById('historialContainer');
-    const lista = document.getElementById('historial');
+// ===== 8. MODALES =====
+function mostrarModalProducto(producto = null) {
+    const esNuevo = producto === null;
     
-    if (!container || !lista) return;
-    
-    if (historial.length === 0) {
-        container.classList.add('oculto');
-        return;
-    }
-    
-    container.classList.remove('oculto');
-    
-    let html = '';
-    historial.slice(0, 10).forEach(registro => {
-        const esPositivo = registro.diferencia >= 0;
-        
-        html += `
-        <div class="registro-historial">
-            <div class="registro-header">
-                <span class="fecha">${registro.fecha}</span>
-                <span class="usuario">${registro.usuario}</span>
+    const modalHTML = `
+        <div class="modal-overlay" onclick="cerrarModal()">
+            <div class="modal-contenido" onclick="event.stopPropagation()">
+                <div class="modal-cabecera">
+                    <h3><i class="fas ${esNuevo ? 'fa-plus-circle' : 'fa-edit'}"></i> ${esNuevo ? 'Nuevo Producto' : 'Editar Producto'}</h3>
+                    <button onclick="cerrarModal()" class="btn-cerrar-modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="modal-cuerpo">
+                    <form id="formProducto" class="formulario-producto">
+                        <input type="hidden" id="productoId" value="${producto?.id || ''}">
+                        
+                        <div class="grupo-formulario">
+                            <label for="nombreProducto"><i class="fas fa-cube"></i> Nombre del Producto *</label>
+                            <input type="text" id="nombreProducto" value="${producto?.nombre || ''}" required 
+                                   placeholder="Ej: Refresco Coca-Cola 2L" maxlength="100">
+                        </div>
+                        
+                        <div class="grupo-formulario grupo-unidades">
+                            <div>
+                                <label for="cantidadProducto"><i class="fas fa-hashtag"></i> Cantidad *</label>
+                                <input type="number" id="cantidadProducto" value="${producto?.cantidad || '0'}" 
+                                       min="0" step="1" required placeholder="0">
+                            </div>
+                            
+                            <div>
+                                <label><i class="fas fa-balance-scale"></i> Unidad</label>
+                                <div class="seleccion-unidad">
+                                    <button type="button" class="btn-unidad ${(!producto?.unidad || producto.unidad === 'Unidades') ? 'activa' : ''}" data-unidad="Unidades">
+                                        Unidades
+                                    </button>
+                                    <button type="button" class="btn-unidad ${producto?.unidad === 'Bultos' ? 'activa' : ''}" data-unidad="Bultos">
+                                        Bultos
+                                    </button>
+                                    <button type="button" class="btn-unidad ${producto?.unidad === 'Botellas' ? 'activa' : ''}" data-unidad="Botellas">
+                                        Botellas
+                                    </button>
+                                </div>
+                                <input type="hidden" id="unidadProducto" value="${producto?.unidad || 'Unidades'}">
+                            </div>
+                        </div>
+                        
+                        <div class="grupo-formulario">
+                            <label for="vencimientoProducto"><i class="fas fa-calendar-alt"></i> Fecha de Vencimiento</label>
+                            <input type="date" id="vencimientoProducto" value="${producto?.vencimiento || ''}">
+                            <small class="texto-claro">Dejar en blanco si no aplica</small>
+                        </div>
+                        
+                        <div class="grupo-formulario">
+                            <label for="marcaProducto"><i class="fas fa-tag"></i> Marca</label>
+                            <input type="text" id="marcaProducto" value="${producto?.marca || ''}" 
+                                   placeholder="Ej: CocaCola, Bimbo, etc." list="marcasLista">
+                            <datalist id="marcasLista">
+                                ${[...new Set(inventario.map(p => p.marca))].filter(m => m && m !== "Sin marca").map(marca => 
+                                    `<option value="${marca}">`).join('')}
+                            </datalist>
+                        </div>
+                    </form>
+                    
+                    ${producto?.vencimiento ? `
+                        <div class="alerta-vencimiento">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div class="contenido-alerta">
+                                <h4>Estado del vencimiento</h4>
+                                <p>${obtenerEstadoVencimiento(producto.vencimiento).texto}</p>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="modal-pie">
+                    <button onclick="guardarProducto()" class="btn-modal btn-guardar">
+                        <i class="fas fa-save"></i> ${esNuevo ? 'Agregar Producto' : 'Guardar Cambios'}
+                    </button>
+                    <button onclick="cerrarModal()" class="btn-modal btn-cancelar">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
             </div>
-            <div class="registro-detalle">
-                <span class="producto">${registro.producto}</span>
-                <span class="cambio ${esPositivo ? 'positivo' : 'negativo'}">
-                    ${registro.anterior} → ${registro.nuevo} 
-                    (${esPositivo ? '+' : ''}${registro.diferencia})
-                </span>
-            </div>
-        </div>`;
-    });
-    
-    lista.innerHTML = html;
-}
-
-// ============================================
-// 6. PERSISTENCIA
-// ============================================
-
-function guardarTodo() {
-    localStorage.setItem('inventario_persistente', JSON.stringify(inventario));
-    localStorage.setItem('historial_persistente', JSON.stringify(historial));
-}
-
-// ============================================
-// 7. NOTIFICACIONES
-// ============================================
-
-function mostrarNotificacion(mensaje) {
-    // Crear notificación simple
-    const notificacion = document.createElement('div');
-    notificacion.textContent = mensaje;
-    notificacion.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #4caf50;
-        color: white;
-        padding: 15px 25px;
-        border-radius: 5px;
-        z-index: 1000;
+        </div>
     `;
     
-    document.body.appendChild(notificacion);
+    // Insertar modal
+    document.getElementById('modalesContainer').innerHTML = modalHTML;
     
+    // Configurar botones de unidad
+    document.querySelectorAll('.btn-unidad').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.btn-unidad').forEach(b => b.classList.remove('activa'));
+            this.classList.add('activa');
+            document.getElementById('unidadProducto').value = this.dataset.unidad;
+        });
+    });
+    
+    // Enfocar primer campo
     setTimeout(() => {
-        notificacion.remove();
-    }, 3000);
+        document.getElementById('nombreProducto').focus();
+    }, 100);
 }
 
-// ============================================
-// 8. EXPORTACIÓN/IMPORTACIÓN (SIMPLIFICADA)
-// ============================================
-
-function generarCodigoRespaldo() {
-    if (!usuarioActivo) {
-        alert("Debes iniciar sesión");
+function guardarProducto() {
+    const idInput = document.getElementById('productoId');
+    const nombre = document.getElementById('nombreProducto').value.trim();
+    const cantidad = parseInt(document.getElementById('cantidadProducto').value);
+    const unidad = document.getElementById('unidadProducto').value;
+    const vencimiento = document.getElementById('vencimientoProducto').value;
+    const marca = document.getElementById('marcaProducto').value.trim() || "Sin marca";
+    
+    // Validaciones
+    if (!nombre) {
+        mostrarNotificacion("❌ El nombre del producto es obligatorio", "error");
+        document.getElementById('nombreProducto').focus();
         return;
     }
     
-    // Crear código simple pero único
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 6);
-    const userCode = usuarioActivo.substring(0, 3).toUpperCase();
-    
-    let codigo = (timestamp + random + userCode).substring(0, 12);
-    codigo = codigo.toUpperCase();
-    
-    // Formatear
-    const codigoFormateado = codigo.match(/.{1,3}/g).join('-');
-    
-    // Guardar datos asociados
-    const datos = {
-        inventario: inventario,
-        historial: historial,
-        usuario: usuarioActivo,
-        fecha: new Date().toISOString()
-    };
-    
-    localStorage.setItem(`respaldo_${codigo}`, JSON.stringify(datos));
-    
-    // Mostrar
-    alert(`🔐 Tu código de respaldo es:\n\n${codigoFormateado}\n\nGuárdalo para importar tu inventario en otra computadora.`);
-}
-
-function mostrarImportarInventario() {
-    if (!usuarioActivo) {
-        alert("Debes iniciar sesión");
+    if (isNaN(cantidad) || cantidad < 0) {
+        mostrarNotificacion("❌ La cantidad debe ser un número positivo", "error");
+        document.getElementById('cantidadProducto').focus();
         return;
     }
     
-    const opcion = prompt("¿Cómo quieres importar?\n\n1. Desde código\n2. Desde archivo\n\nEscribe 1 o 2:");
+    const esNuevo = !idInput.value;
+    let producto;
+    let cantidadAnterior = 0;
     
-    if (opcion === '1') {
-        importarDesdeCodigo();
-    } else if (opcion === '2') {
-        importarDesdeArchivo();
-    }
-}
-
-function importarDesdeCodigo() {
-    const codigo = prompt("Pega tu código (sin guiones):");
-    if (!codigo) return;
-    
-    const codigoLimpio = codigo.replace(/-/g, '').toUpperCase();
-    
-    const datos = localStorage.getItem(`respaldo_${codigoLimpio}`);
-    
-    if (!datos) {
-        alert("Código no encontrado");
-        return;
-    }
-    
-    try {
-        const datosParseados = JSON.parse(datos);
-        
-        if (confirm(`¿Importar ${datosParseados.inventario.length} productos?`)) {
-            inventario = datosParseados.inventario;
-            historial = datosParseados.historial || [];
-            
-            guardarTodo();
-            cargarInventarioAdmin();
-            
-            alert(`✅ Importado: ${inventario.length} productos`);
-        }
-    } catch (error) {
-        alert("Error al importar");
-    }
-}
-
-function importarDesdeArchivo() {
-    alert("Para importar desde archivo:\n1. Exporta primero tu inventario actual\n2. En la otra computadora, carga el archivo .json");
-    
-    // Opción simple: crear input de archivo
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    
-    input.onchange = function(e) {
-        const archivo = e.target.files[0];
-        if (!archivo) return;
-        
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            try {
-                const datos = JSON.parse(e.target.result);
-                
-                if (confirm(`¿Importar ${datos.inventario.length} productos?`)) {
-                    inventario = datos.inventario;
-                    historial = datos.historial || [];
-                    
-                    guardarTodo();
-                    cargarInventarioAdmin();
-                    
-                    alert(`✅ Importado: ${inventario.length} productos`);
-                }
-            } catch (error) {
-                alert("Archivo inválido");
-            }
+    if (esNuevo) {
+        // Crear nuevo producto
+        producto = {
+            id: proximoId++,
+            nombre,
+            cantidad,
+            unidad,
+            vencimiento: vencimiento || "",
+            marca,
+            creadoPor: usuarioActivo,
+            fechaCreacion: new Date().toLocaleString('es-VE'),
+            ultimaMod: "Nunca"
         };
+        inventario.push(producto);
         
-        reader.readAsText(archivo);
-    };
-    
-    input.click();
-}
-
-function exportarComoArchivo() {
-    if (!usuarioActivo) {
-        alert("Debes iniciar sesión");
-        return;
-    }
-    
-    const datos = {
-        inventario: inventario,
-        historial: historial,
-        usuario: usuarioActivo,
-        fecha: new Date().toISOString()
-    };
-    
-    const jsonString = JSON.stringify(datos, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const fecha = new Date().toISOString().split('T')[0];
-    const nombreArchivo = `inventario_${fecha}.json`;
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nombreArchivo;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    alert(`✅ Exportado: ${nombreArchivo}`);
-}
-
-// ============================================
-// 9. HACER FUNCIONES GLOBALES
-// ============================================
-
-window.mostrarLogin = mostrarLogin;
-window.regresarAVisita = regresarAVisita;
-window.verificarCredenciales = verificarCredenciales;
-window.cerrarSesion = cerrarSesion;
-window.agregarProducto = agregarProducto;
-window.modificarProducto = modificarProducto;
-window.eliminarProducto = eliminarProducto;
-window.generarCodigoRespaldo = generarCodigoRespaldo;
-window.mostrarImportarInventario = mostrarImportarInventario;
-window.exportarComoArchivo = exportarComoArchivo;
-
-// ============================================
-// 10. INICIAR
-// ============================================
-
-document.addEventListener('DOMContentLoaded', inicializar);
+        // Registrar en historial
+        registrarEnHistorial(
+            usuarioActivo,
+            nombre,
+            'Creación',
+            0,
+            cantidad,
+            cantidad,
+            'Producto agregado al inventario'
+        );
+        
+        mostrarNotificacion(`✅ Producto "${nombre}" agregado`, "exito");
+    } else {
+        // Actualizar producto existente
+        const id = parseInt(idInput.value);
+        const indice = inventario.findIndex(p => p.id === id);
+        
+        if (indice === -1) return;
+        
+        producto = inventario[indice];
+        cantidadAnterior = producto.cantidad;
+        
+        // Registrar cambios en historial si hubo modificación
+        if (producto.nombre !== nombre || 
+            producto.cantidad !== cantidad || 
+            producto.unidad !== unidad || 
+            producto.vencimiento !== vencimiento || 
+            producto.marca !== marca) {
+            
+            const cambios = [];
+            if (producto.nombre !== nombre) cambios.push(`nombre: "${producto.nombre}" → "${nombre}"`);
+            i
