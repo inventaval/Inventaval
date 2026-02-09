@@ -761,4 +761,6 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inicializar);
 } else {
     inicializar();
-    }
+}
+
+console.log("✅ inventario.js cargado completamente");
