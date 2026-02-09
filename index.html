@@ -314,5 +314,31 @@
             console.log('🏪 InventaVal - Sistema cargado correctamente');
         });
     </script>
+    <!-- Agrégalo JUSTO ANTES del </body> en tu HTML -->
+<div id="debugPanel" style="position: fixed; bottom: 0; left: 0; right: 0; background: red; color: white; padding: 10px; z-index: 9999; display: none;">
+    <div id="debugContent"></div>
+    <button onclick="document.getElementById('debugPanel').style.display = 'none'" style="float: right;">X</button>
+</div>
+
+<script>
+// Reemplaza console.log con alertas visuales
+function debugLog(mensaje) {
+    console.log(mensaje);
+    document.getElementById('debugContent').textContent = mensaje;
+    document.getElementById('debugPanel').style.display = 'block';
+}
+
+// Sobreescribir console.error
+const originalError = console.error;
+console.error = function(...args) {
+    originalError.apply(console, args);
+    debugLog("ERROR: " + args.join(' '));
+    alert("Error: " + args[0]); // También mostrar alerta
+};
+
+// Verificar si las funciones existen
+debugLog("Script cargado. Probando funciones...");
+debugLog("mostrarLogin existe? " + (typeof mostrarLogin === 'function'));
+</script>
 </body>
     </html>
