@@ -705,11 +705,187 @@ function imprimirDirecto() {
 }
 
 function generarCodigoRespaldo() {
-    mostrarNotificacion("🔑 Generando código de respaldo...", "info");
+    console.log("🔐 Generando código tipo Steam...");
+    
+    // Crear código alfanumérico estilo Steam
+    const crearSegmento = () => {
+        const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let segmento = '';
+        for (let i = 0; i < 5; i++) {
+            segmento += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+        }
+        return segmento;
+    };
+    
+    // Generar 4 segmentos separados por guiones
+    const codigo = `${crearSegmento()}-${crearSegmento()}-${crearSegmento()}-${crearSegmento()}`;
+    
+    // Crear objeto con los datos comprimidos
+    const datos = {
+        inventario: inventario,
+        historial: historial,
+        timestamp: Date.now(),
+        checksum: inventario.length + historial.length
+    };
+    
+    // Guardar en localStorage con el código como clave
+    localStorage.setItem(`respaldo_${codigo}`, JSON.stringify(datos));
+    
+    // Mostrar el código en un modal simple
+    mostrarModalCodigoSimple(codigo);
+    
+    console.log("✅ Código generado:", codigo);
+}
+
+function mostrarModalCodigoSimple(codigo) {
+    const modalHTML = `
+        <div class="modal-overlay" id="modalCodigoSimple">
+            <div class="modal" style="max-width: 500px;">
+                <div class="modal-cabecera">
+                    <h2><i class="fas fa-key"></i> Código de Respaldo Generado</h2>
+                    <button class="btn-cerrar-modal" onclick="document.getElementById('modalCodigoSimple').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-contenido" style="text-align: center;">
+                    <div style="font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #2e7d32; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 2px dashed #4caf50;">
+                        ${codigo}
+                    </div>
+                    
+                    <p><i class="fas fa-info-circle"></i> <strong>¡Guarda este código!</strong></p>
+                    <p>Es tu respaldo completo. En otra PC:</p>
+                    <ol style="text-align: left; display: inline-block; margin: 15px 0;">
+                        <li>Ve a <strong>Importar Inventario</strong></li>
+                        <li>Selecciona <strong>Desde Código</strong></li>
+                        <li>Pega este código</li>
+                    </ol>
+                    
+                    <button onclick="copiarAlPortapapeles('${codigo}')" style="background: #4caf50; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 15px;">
+                        <i class="fas fa-copy"></i> Copiar Código
+                    </button>
+                </div>
+                <div class="modal-botones">
+                    <button class="btn-modal btn-modal-primario" onclick="document.getElementById('modalCodigoSimple').remove()">
+                        <i class="fas fa-check"></i> Entendido
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (!document.getElementById('modalesContainer')) {
+        const container = document.createElement('div');
+        container.id = 'modalesContainer';
+        document.body.appendChild(container);
+    }
+    
+    document.getElementById('modalesContainer').innerHTML = modalHTML;
+}
+
+function copiarAlPortapapeles(texto) {
+    navigator.clipboard.writeText(texto).then(() => {
+        alert("✅ Código copiado al portapapeles");
+    });
 }
 
 function mostrarImportarInventario() {
-    mostrarNotificacion("📂 Abriendo importador...", "info");
+    const modalHTML = `
+        <div class="modal-overlay" id="modalImportarSimple">
+            <div class="modal" style="max-width: 500px;">
+                <div class="modal-cabecera">
+                    <h2><i class="fas fa-file-import"></i> Importar desde Código</h2>
+                    <button class="btn-cerrar-modal" onclick="document.getElementById('modalImportarSimple').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-contenido">
+                    <div style="margin-bottom: 20px;">
+                        <p><i class="fas fa-key"></i> <strong>Pega tu código de respaldo:</strong></p>
+                        <p style="font-size: 14px; color: #666;">Formato: ABCD1-EFGH2-IJK3L-MNOP4</p>
+                    </div>
+                    
+                    <input type="text" id="codigoImportarInput" placeholder="Ej: HS72-29JFK-HAKE-6767" style="width: 100%; padding: 12px; font-size: 18px; text-align: center; letter-spacing: 2px; border: 2px solid #ddd; border-radius: 6px; margin: 10px 0;">
+                    
+                    <button onclick="importarDesdeCodigoSimple()" style="background: #ff9800; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 15px;">
+                        <i class="fas fa-upload"></i> Importar Inventario
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (!document.getElementById('modalesContainer')) {
+        const container = document.createElement('div');
+        container.id = 'modalesContainer';
+        document.body.appendChild(container);
+    }
+    
+    document.getElementById('modalesContainer').innerHTML = modalHTML;
+    
+    // Enfocar el input
+    setTimeout(() => {
+        const input = document.getElementById('codigoImportarInput');
+        if (input) input.focus();
+    }, 100);
+}
+
+function importarDesdeCodigoSimple() {
+    const codigo = document.getElementById('codigoImportarInput').value.trim().toUpperCase();
+    
+    if (!codigo || !/^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$/.test(codigo)) {
+        alert("❌ Código inválido. Formato: ABCD1-EFGH2-IJK3L-MNOP4");
+        return;
+    }
+    
+    // Buscar respaldo en localStorage
+    const datosGuardados = localStorage.getItem(`respaldo_${codigo}`);
+    
+    if (!datosGuardados) {
+        alert("❌ Código no encontrado o expirado");
+        return;
+    }
+    
+    try {
+        const datos = JSON.parse(datosGuardados);
+        
+        if (confirm(`¿Importar ${datos.inventario.length} productos y ${datos.historial.length} movimientos?\n\nEsto reemplazará tu inventario actual.`)) {
+            inventario = datos.inventario;
+            historial = datos.historial;
+            
+            // Actualizar próximo ID
+            const maxId = Math.max(...inventario.map(p => p.id || 0));
+            proximoId = maxId > 0 ? maxId + 1 : 1;
+            
+            // Guardar en localStorage permanente
+            guardarTodo();
+            
+            // Cerrar modal
+            document.getElementById('modalImportarSimple').remove();
+            
+            // Recargar interfaz
+            if (usuarioActivo) {
+                cargarInventarioAdmin();
+            } else {
+                cargarInventario();
+            }
+            
+            alert(`✅ ¡Inventario importado!\n${inventario.length} productos restaurados`);
+            
+            // Registrar en historial
+            registrarEnHistorial(
+                "SISTEMA", 
+                "Sistema", 
+                "Importación desde código", 
+                null, 
+                null, 
+                0, 
+                `Importados desde código: ${codigo}`
+            );
+        }
+    } catch (error) {
+        console.error("Error importando:", error);
+        alert("❌ Error al importar. Código corrupto.");
+    }
 }
 
 function toggleHistorial() {
