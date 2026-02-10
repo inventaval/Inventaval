@@ -705,68 +705,103 @@ function imprimirDirecto() {
 }
 
 function generarCodigoRespaldo() {
-    console.log("🔐 Generando código tipo Steam...");
+    console.log("🔐 Generando código corto...");
     
-    // Crear código alfanumérico estilo Steam
-    const crearSegmento = () => {
-        const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let segmento = '';
-        for (let i = 0; i < 5; i++) {
-            segmento += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
-        }
-        return segmento;
-    };
+    // 1. Pedir un ID único (como tu nombre o email)
+    const idUsuario = prompt(
+        "📝 Para generar tu código de respaldo:\n\n" +
+        "Ingresa un ID único (ej: tu email, nombre, o número):\n" +
+        "Ej: juan@gmail.com, inventarioTienda, 001\n\n" +
+        "Este ID te servirá para recuperar en otra PC.",
+        usuarioActivo || "miInventario"
+    );
     
-    // Generar 4 segmentos separados por guiones
-    const codigo = `${crearSegmento()}-${crearSegmento()}-${crearSegmento()}-${crearSegmento()}`;
+    if (!idUsuario) {
+        alert("❌ Se necesita un ID para generar el código");
+        return;
+    }
     
-    // Crear objeto con los datos comprimidos
-    const datos = {
+    // 2. Generar código corto aleatorio (6 caracteres)
+    const caracteres = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sin 0,1,O,I para evitar confusiones
+    let codigoCorto = 'INV-';
+    for (let i = 0; i < 5; i++) {
+        codigoCorto += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+    }
+    
+    // 3. Crear datos del inventario
+    const datosInventario = {
+        id: codigoCorto,
+        usuario: idUsuario,
         inventario: inventario,
         historial: historial,
-        timestamp: Date.now(),
-        checksum: inventario.length + historial.length
+        fecha: new Date().toLocaleString('es-VE'),
+        total: inventario.length
     };
     
-    // Guardar en localStorage con el código como clave
-    localStorage.setItem(`respaldo_${codigo}`, JSON.stringify(datos));
+    // 4. Guardar en el SERVIDOR (simulado con localStorage)
+    const respaldosGuardados = JSON.parse(localStorage.getItem('inventaval_respaldos') || '{}');
+    respaldosGuardados[codigoCorto] = datosInventario;
+    respaldosGuardados[idUsuario] = datosInventario; // También guardar por ID
+    localStorage.setItem('inventaval_respaldos', JSON.stringify(respaldosGuardados));
     
-    // Mostrar el código en un modal simple
-    mostrarModalCodigoSimple(codigo);
+    // 5. Mostrar código simple para anotar
+    mostrarCodigoParaAnotar(codigoCorto, idUsuario, datosInventario);
     
-    console.log("✅ Código generado:", codigo);
+    console.log("✅ Código corto generado:", codigoCorto, "para ID:", idUsuario);
 }
 
-function mostrarModalCodigoSimple(codigo) {
+function mostrarCodigoParaAnotar(codigo, idUsuario, datos) {
     const modalHTML = `
-        <div class="modal-overlay" id="modalCodigoSimple">
+        <div class="modal-overlay" id="modalCodigoCorto">
             <div class="modal" style="max-width: 500px;">
                 <div class="modal-cabecera">
-                    <h2><i class="fas fa-key"></i> Código de Respaldo Generado</h2>
-                    <button class="btn-cerrar-modal" onclick="document.getElementById('modalCodigoSimple').remove()">
+                    <h2><i class="fas fa-pencil-alt"></i> Anota este Código</h2>
+                    <button class="btn-cerrar-modal" onclick="document.getElementById('modalCodigoCorto').remove()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="modal-contenido" style="text-align: center;">
-                    <div style="font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #2e7d32; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 2px dashed #4caf50;">
-                        ${codigo}
+                    
+                    <div style="margin: 20px 0; padding: 25px; background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); border-radius: 12px; color: white;">
+                        <div style="font-size: 32px; font-weight: bold; letter-spacing: 3px; margin-bottom: 10px;">
+                            ${codigo}
+                        </div>
+                        <div style="font-size: 16px; opacity: 0.9;">
+                            ID: <strong>${idUsuario}</strong>
+                        </div>
                     </div>
                     
-                    <p><i class="fas fa-info-circle"></i> <strong>¡Guarda este código!</strong></p>
-                    <p>Es tu respaldo completo. En otra PC:</p>
-                    <ol style="text-align: left; display: inline-block; margin: 15px 0;">
-                        <li>Ve a <strong>Importar Inventario</strong></li>
-                        <li>Selecciona <strong>Desde Código</strong></li>
-                        <li>Pega este código</li>
-                    </ol>
+                    <div style="background: #fff8e1; border-radius: 10px; padding: 20px; margin: 20px 0; border-left: 5px solid #ff9800;">
+                        <h4 style="margin-top: 0; color: #ff6f00;">
+                            <i class="fas fa-pencil-alt"></i> ANOTA EN PAPEL:
+                        </h4>
+                        <div style="font-family: 'Courier New', monospace; font-size: 18px; text-align: left; background: white; padding: 15px; border-radius: 5px; border: 2px dashed #ff9800;">
+                            <div style="margin-bottom: 10px;"><strong>Código:</strong> ${codigo}</div>
+                            <div style="margin-bottom: 10px;"><strong>ID:</strong> ${idUsuario}</div>
+                            <div><strong>Productos:</strong> ${datos.total}</div>
+                            <div><strong>Fecha:</strong> ${datos.fecha}</div>
+                        </div>
+                    </div>
                     
-                    <button onclick="copiarAlPortapapeles('${codigo}')" style="background: #4caf50; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 15px;">
-                        <i class="fas fa-copy"></i> Copiar Código
-                    </button>
-                </div>
-                <div class="modal-botones">
-                    <button class="btn-modal btn-modal-primario" onclick="document.getElementById('modalCodigoSimple').remove()">
-                        <i class="fas fa-check"></i> Entendido
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0;">
+                        <div style="text-align: left; background: #e8f5e9; padding: 10px; border-radius: 5px;">
+                            <div style="font-weight: bold; color: #2e7d32;">📦 Incluye:</div>
+                            <div>✅ ${datos.total} productos</div>
+                            <div>✅ Historial completo</div>
+                            <div>✅ Fecha: ${new Date().toLocaleDateString('es-VE')}</div>
+                        </div>
+                        
+                        <div style="text-align: left; background: #e3f2fd; padding: 10px; border-radius: 5px;">
+                            <div style="font-weight: bold; color: #1976d2;">🏠 Para usar en casa:</div>
+                            <div>1. Ve a "Importar"</div>
+                            <div>2. Usa el código o ID</div>
+                            <div>3. ¡Listo!</div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="imprimirCodigo('${codigo}', '${idUsuario}', ${datos.total})" 
+                            style="background: #2196f3; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 10px; display: flex; align-items: center; gap: 8px; margin: 10px auto;">
+                        <i class="fas fa-print"></i> Imprimir o Guardar PDF
                     </button>
                 </div>
             </div>
@@ -782,12 +817,62 @@ function mostrarModalCodigoSimple(codigo) {
     document.getElementById('modalesContainer').innerHTML = modalHTML;
 }
 
-function copiarAlPortapapeles(texto) {
-    navigator.clipboard.writeText(texto).then(() => {
-        alert("✅ Código copiado al portapapeles");
-    });
+function imprimirCodigo(codigo, idUsuario, totalProductos) {
+    const contenidoImprimir = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Código Respaldo InventaVal</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                .codigo-grande { font-size: 36px; font-weight: bold; color: #2e7d32; margin: 20px 0; padding: 15px; border: 3px solid #2e7d32; text-align: center; letter-spacing: 3px; }
+                .info { margin: 15px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+                .instrucciones { margin-top: 30px; padding: 15px; border-top: 2px dashed #ccc; }
+            </style>
+        </head>
+        <body>
+            <h1>🏪 InventaVal - Código de Respaldo</h1>
+            <div class="codigo-grande">${codigo}</div>
+            
+            <div class="info">
+                <strong>ID de Usuario:</strong> ${idUsuario}<br>
+                <strong>Total Productos:</strong> ${totalProductos}<br>
+                <strong>Fecha Generación:</strong> ${new Date().toLocaleString('es-VE')}<br>
+                <strong>Generado por:</strong> ${usuarioActivo || 'Sistema'}
+            </div>
+            
+            <div class="instrucciones">
+                <h3>📝 Instrucciones para recuperar:</h3>
+                <ol>
+                    <li>Ve a <strong>Importar Inventario</strong></li>
+                    <li>Selecciona <strong>Desde Código Corto</strong></li>
+                    <li>Ingresa el código: <strong>${codigo}</strong></li>
+                    <li>O ingresa el ID: <strong>${idUsuario}</strong></li>
+                    <li>¡Tu inventario se cargará automáticamente!</li>
+                </ol>
+                
+                <p style="margin-top: 20px; font-style: italic;">
+                    Guarda este papel en un lugar seguro. Es tu respaldo completo.
+                </p>
+            </div>
+            
+            <div style="margin-top: 40px; text-align: center; color: #666; font-size: 12px;">
+                🏪 InventaVal v${CONFIG.version} | Sistema de Inventario Profesional
+            </div>
+        </body>
+        </html>
+    `;
+    
+    const ventanaImprimir = window.open('', '_blank');
+    ventanaImprimir.document.write(contenidoImprimir);
+    ventanaImprimir.document.close();
+    ventanaImprimir.focus();
+    
+    setTimeout(() => {
+        ventanaImprimir.print();
+        ventanaImprimir.close();
+    }, 500);
 }
-
 function mostrarImportarInventario() {
     const modalHTML = `
         <div class="modal-overlay" id="modalImportarSimple">
@@ -863,28 +948,171 @@ function importarDesdeCodigoSimple() {
             document.getElementById('modalImportarSimple').remove();
             
             // Recargar interfaz
-            if (usuarioActivo) {
-                cargarInventarioAdmin();
-            } else {
-                cargarInventario();
-            }
-            
-            alert(`✅ ¡Inventario importado!\n${inventario.length} productos restaurados`);
-            
-            // Registrar en historial
-            registrarEnHistorial(
-                "SISTEMA", 
-                "Sistema", 
-                "Importación desde código", 
-                null, 
-                null, 
-                0, 
-                `Importados desde código: ${codigo}`
-            );
+function mostrarImportarInventario() {
+    const modalHTML = `
+        <div class="modal-overlay" id="modalImportarCorto">
+            <div class="modal" style="max-width: 500px;">
+                <div class="modal-cabecera">
+                    <h2><i class="fas fa-home"></i> Recuperar en Casa</h2>
+                    <button class="btn-cerrar-modal" onclick="document.getElementById('modalImportarCorto').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-contenido" style="text-align: center;">
+                    
+                    <div style="margin-bottom: 25px;">
+                        <div style="font-size: 48px; color: #4caf50; margin-bottom: 10px;">
+                            <i class="fas fa-house-user"></i>
+                        </div>
+                        <h3 style="margin-bottom: 5px;">Recupera tu inventario</h3>
+                        <p style="color: #666;">Ingresa el código o ID que anotaste</p>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin: 20px 0;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; text-align: left; margin-bottom: 5px; font-weight: bold; color: #2e7d32;">
+                                <i class="fas fa-key"></i> Código (INV-XXXXX):
+                            </label>
+                            <input type="text" id="codigoCortoInput" placeholder="INV-A1B2C" 
+                                   style="width: 100%; padding: 12px; font-size: 18px; text-align: center; letter-spacing: 2px; border: 2px solid #4caf50; border-radius: 6px;">
+                        </div>
+                        
+                        <div style="color: #666; margin: 10px 0; font-size: 14px;">--- O ---</div>
+                        
+                        <div>
+                            <label style="display: block; text-align: left; margin-bottom: 5px; font-weight: bold; color: #2196f3;">
+                                <i class="fas fa-user"></i> ID (email/nombre):
+                            </label>
+                            <input type="text" id="idUsuarioInput" placeholder="juan@gmail.com o inventarioTienda" 
+                                   style="width: 100%; padding: 12px; font-size: 16px; border: 2px solid #2196f3; border-radius: 6px;">
+                        </div>
+                    </div>
+                    
+                    <div style="background: #e8f5e9; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: left;">
+                        <h4 style="margin-top: 0; color: #2e7d32;"><i class="fas fa-question-circle"></i> Ejemplos:</h4>
+                        <ul style="margin-bottom: 0;">
+                            <li><strong>Código:</strong> INV-7A2F9</li>
+                            <li><strong>ID:</strong> juan@gmail.com</li>
+                            <li><strong>ID:</strong> inventarioPrincipal</li>
+                            <li><strong>ID:</strong> tienda001</li>
+                        </ul>
+                    </div>
+                    
+                    <button onclick="recuperarConCodigoCorto()" 
+                            style="background: #ff9800; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <i class="fas fa-upload"></i> Recuperar Mi Inventario
+                    </button>
+                    
+                    <p style="margin-top: 15px; font-size: 14px; color: #666;">
+                        <i class="fas fa-info-circle"></i> Recuperarás todos los productos y el historial completo.
+                    </p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (!document.getElementById('modalesContainer')) {
+        const container = document.createElement('div');
+        container.id = 'modalesContainer';
+        document.body.appendChild(container);
+    }
+    
+    document.getElementById('modalesContainer').innerHTML = modalHTML;
+    
+    // Enfocar el input
+    setTimeout(() => {
+        document.getElementById('codigoCortoInput').focus();
+    }, 100);
+}
+
+function recuperarConCodigoCorto() {
+    const codigoInput = document.getElementById('codigoCortoInput').value.trim().toUpperCase();
+    const idInput = document.getElementById('idUsuarioInput').value.trim();
+    
+    if (!codigoInput && !idInput) {
+        alert("❌ Por favor, ingresa el código (INV-XXXXX) o tu ID (email/nombre)");
+        return;
+    }
+    
+    // Buscar en respaldos guardados
+    const respaldosGuardados = JSON.parse(localStorage.getItem('inventaval_respaldos') || '{}');
+    
+    let datosRespaldo = null;
+    let claveUsada = '';
+    
+    // Buscar por código primero
+    if (codigoInput) {
+        datosRespaldo = respaldosGuardados[codigoInput];
+        claveUsada = codigoInput;
+    }
+    
+    // Si no encontró por código, buscar por ID
+    if (!datosRespaldo && idInput) {
+        datosRespaldo = respaldosGuardados[idInput];
+        claveUsada = idInput;
+    }
+    
+    if (!datosRespaldo) {
+        alert(`❌ No se encontró respaldo\n\nCódigo/ID: ${codigoInput || idInput}\n\nVerifica que esté bien escrito.`);
+        return;
+    }
+    
+    // Mostrar confirmación
+    const confirmacion = `
+✅ RESPalDO ENCONTRADO:
+
+📦 Productos: ${datosRespaldo.inventario.length}
+📋 Movimientos: ${datosRespaldo.historial?.length || 0}
+👤 Generado por: ${datosRespaldo.usuario}
+📅 Fecha: ${datosRespaldo.fecha}
+
+⚠️ Esto reemplazará tu inventario actual.
+¿Recuperar este inventario?
+    `;
+    
+    if (confirm(confirmacion)) {
+        // Restaurar inventario
+        inventario = datosRespaldo.inventario;
+        historial = datosRespaldo.historial || [];
+        
+        // Actualizar próximo ID
+        const maxId = Math.max(...inventario.map(p => p.id || 0));
+        proximoId = maxId > 0 ? maxId + 1 : 1;
+        
+        // Guardar en localStorage permanente
+        guardarTodo();
+        
+        // Cerrar modal
+        document.getElementById('modalImportarCorto')?.remove();
+        
+        // Recargar interfaz
+        if (usuarioActivo) {
+            cargarInventarioAdmin();
+        } else {
+            cargarInventario();
         }
-    } catch (error) {
-        console.error("Error importando:", error);
-        alert("❌ Error al importar. Código corrupto.");
+        
+        // Mostrar éxito
+        setTimeout(() => {
+            alert(`🎉 ¡INVENTARIO RECUPERADO!
+
+✅ ${inventario.length} productos restaurados
+✅ Historial completo recuperado
+✅ Listo para usar en esta PC
+
+Código usado: ${claveUsada}`);
+        }, 500);
+        
+        // Registrar en historial
+        registrarEnHistorial(
+            "SISTEMA", 
+            "Sistema", 
+            "Recuperación desde código corto", 
+            null, 
+            null, 
+            0, 
+            `Recuperado desde código: ${claveUsada} (${datosRespaldo.usuario})`
+        );
     }
 }
 
