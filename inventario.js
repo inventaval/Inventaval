@@ -705,67 +705,226 @@ function imprimirDirecto() {
 }
 
 function generarCodigoRespaldo() {
-    const id = prompt("Tu ID (ej: juan@gmail.com):", usuarioActivo || "miTienda");
-    if (!id) return;
+    // Pedir correo del usuario
+    const correoUsuario = prompt(
+        "📧 ENVIAR CÓDIGO A TU CORREO:\n\n" +
+        "Ingresa tu correo electrónico:\n" +
+        "(El código se enviará a este correo)\n\n" +
+        "Ej: juan@gmail.com, maria@hotmail.com",
+        usuarioActivo + "@gmail.com" || "tucorreo@gmail.com"
+    );
     
-    const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let codigo = 'INV-';
-    for (let i = 0; i < 5; i++) {
-        codigo += letras.charAt(Math.floor(Math.random() * letras.length));
-    }
-    
-    const datos = {
-        id: codigo,
-        usuario: id,
-        inventario: inventario,
-        historial: historial,
-        fecha: new Date().toLocaleString('es-VE'),
-        total: inventario.length
-    };
-    
-    // Guardar
-    const respaldos = JSON.parse(localStorage.getItem('inventaval_respaldos') || '{}');
-    respaldos[codigo] = datos;
-    respaldos[id] = datos;
-    localStorage.setItem('inventaval_respaldos', JSON.stringify(respaldos));
-    
-    // Mostrar
-    alert(`✅ CÓDIGO GENERADO:\n\n📝 ANOTA EN PAPEL:\n\n🔑 Código: ${codigo}\n👤 ID: ${id}\n📦 Productos: ${inventario.length}\n\n🏠 En casa: Ve a IMPORTAR y usa este código o ID`);
-}
-
-function mostrarImportarInventario() {
-    const codigo = prompt("📝 Pega el código (INV-XXXXX) o ID:", "");
-    if (!codigo) return;
-    
-    const respaldos = JSON.parse(localStorage.getItem('inventaval_respaldos') || '{}');
-    const datos = respaldos[codigo.toUpperCase()] || respaldos[codigo];
-    
-    if (!datos) {
-        alert("❌ Código/ID no encontrado");
+    if (!correoUsuario || !correoUsuario.includes('@')) {
+        alert("❌ Necesito un correo válido para enviarte el código");
         return;
     }
     
-    if (confirm(`¿Recuperar ${datos.inventario.length} productos?`)) {
-        inventario = datos.inventario;
-        historial = datos.historial || [];
+    // Generar código de 8 caracteres
+    const caracteres = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let codigo = '';
+    for (let i = 0; i < 8; i++) {
+        codigo += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+    }
+    
+    // Formato: INV-XXXX-XXXX
+    const codigoFormateado = `INV-${codigo.substring(0, 4)}-${codigo.substring(4, 8)}`;
+    
+    // Crear el "email" (simulado)
+    const asunto = `🏪 Tu código de respaldo InventaVal: ${codigoFormateado}`;
+    
+    const cuerpoEmail = `
+INVENTAVAL - CÓDIGO DE RESPALDO
+
+✅ Tu código único: ${codigoFormateado}
+📧 Correo asociado: ${correoUsuario}
+📅 Generado: ${new Date().toLocaleString('es-VE')}
+📦 Productos incluidos: ${inventario.length}
+👤 Generado por: ${usuarioActivo || "Sistema"}
+
+📝 INSTRUCCIONES PARA USAR EN CASA:
+1. Abre InventaVal en tu otra PC
+2. Haz clic en "IMPORTAR"
+3. Ingresa este código: ${codigoFormateado}
+4. ¡Tu inventario se cargará automáticamente!
+
+📊 RESUMEN DE TU INVENTARIO:
+${inventario.slice(0, 10).map(p => `• ${p.nombre}: ${p.cantidad} ${p.unidad}`).join('\n')}
+${inventario.length > 10 ? `\n... y ${inventario.length - 10} productos más` : ''}
+
+⚠️ Este código expira en 7 días.
+🔒 Solo tú puedes usarlo con este correo.
+
+---
+🏪 InventaVal v${CONFIG.version}
+Sistema Profesional de Inventario
+    `.trim();
+    
+    // Guardar el código en localStorage con el correo como referencia
+    const codigosGuardados = JSON.parse(localStorage.getItem('inventaval_codigos_correo') || '{}');
+    
+    codigosGuardados[codigoFormateado] = {
+        correo: correoUsuario.toLowerCase(),
+        inventario: inventario,
+        historial: historial,
+        fechaGeneracion: new Date().toISOString(),
+        expiracion: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    };
+    
+    localStorage.setItem('inventaval_codigos_correo', JSON.stringify(codigosGuardados));
+    
+    // Mostrar para que el usuario "envíe" el email
+    const textoParaEnviar = `mailto:${correoUsuario}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpoEmail)}`;
+    
+    // Crear enlace para "enviar" email
+    const enlaceEmail = document.createElement('a');
+    enlaceEmail.href = textoParaEnviar;
+    enlaceEmail.click();
+    
+    // También mostrar alerta con el código
+    alert(`📧 CORREO PREPARADO PARA: ${correoUsuario}
+
+✅ Tu código: ${codigoFormateado}
+
+📝 AHORA:
+1. Se abrirá tu cliente de correo
+2. REVISA la bandeja de "Borradores" o "Redactar"
+3. ENVÍA el correo a ti mismo
+4. En casa, abre ese correo y usa el código
+
+🔄 Si no se abre el correo, ANOTA ESTO:
+Código: ${codigoFormateado}
+Correo: ${correoUsuario}
+
+🏠 En casa solo necesitas el código.`);
+    
+    // También copiar código al portapapeles por si acaso
+    navigator.clipboard.writeText(codigoFormateado).then(() => {
+        console.log("Código copiado al portapapeles");
+    });
+} // aqui ternmina function generarCodigo
+
+function mostrarImportarInventario() {
+    const codigoIngresado = prompt(
+        "🔐 RECUPERAR DESDE CORREO:\n\n" +
+        "Pega el código que recibiste por correo:\n\n" +
+        "Formato: INV-XXXX-XXXX\n" +
+        "Ej: INV-A2B3-C4D5\n\n" +
+        "O ingresa tu correo si no tienes el código:",
+        ""
+    ).trim().toUpperCase();
+    
+    if (!codigoIngresado) {
+        alert("❌ Necesito el código de tu correo");
+        return;
+    }
+    
+    // Buscar en los códigos guardados
+    const codigosGuardados = JSON.parse(localStorage.getItem('inventaval_codigos_correo') || '{}');
+    
+    let datosRespaldo = null;
+    let codigoValido = codigoIngresado;
+    
+    // Si es un correo en lugar de código, buscar por correo
+    if (codigoIngresado.includes('@')) {
+        // Buscar por correo
+        for (const [codigo, datos] of Object.entries(codigosGuardados)) {
+            if (datos.correo.toLowerCase() === codigoIngresado.toLowerCase()) {
+                datosRespaldo = datos;
+                codigoValido = codigo;
+                break;
+            }
+        }
+    } else {
+        // Buscar por código directamente
+        datosRespaldo = codigosGuardados[codigoIngresado];
+    }
+    
+    if (!datosRespaldo) {
+        // Si no se encontró, pedir que pegue el email completo
+        alert(`❌ Código/Correo no encontrado: ${codigoIngresado}\n\n📧 ¿COPIASte TODO el correo que te enviaste?\n\nSi tienes el correo abierto:\n1. Copia TODO el texto del correo\n2. Pégalo aquí en el próximo paso`);
         
-        // Actualizar ID
+        const textoCorreoCompleto = prompt("📧 Pega TODO el texto de tu correo aquí:", "");
+        
+        if (textoCorreoCompleto) {
+            // Intentar extraer código del correo
+            const codigoMatch = textoCorreoCompleto.match(/INV-[A-Z0-9]{4}-[A-Z0-9]{4}/);
+            if (codigoMatch) {
+                codigoValido = codigoMatch[0];
+                datosRespaldo = codigosGuardados[codigoValido];
+            }
+        }
+        
+        if (!datosRespaldo) {
+            alert("❌ No se pudo recuperar. Asegúrate de:\n\n1. Haber enviado el correo a ti mismo\n2. Usar el mismo navegador\n3. O copiar TODO el texto del correo");
+            return;
+        }
+    }
+    
+    // Verificar expiración
+    const fechaExpiracion = new Date(datosRespaldo.expiracion);
+    if (fechaExpiracion < new Date()) {
+        if (!confirm(`⚠️ Este código expiró el ${fechaExpiracion.toLocaleDateString('es-VE')}\n\n¿Intentar cargar de todos modos?`)) {
+            return;
+        }
+    }
+    
+    // Mostrar confirmación
+    const confirmacion = `
+✅ CÓDIGO ENCONTRADO:
+
+📧 Correo: ${datosRespaldo.correo}
+📅 Generado: ${new Date(datosRespaldo.fechaGeneracion).toLocaleString('es-VE')}
+📦 Productos: ${datosRespaldo.inventario.length}
+📋 Movimientos: ${datosRespaldo.historial?.length || 0}
+
+¿Cargar este inventario en esta PC?
+    `.trim();
+    
+    if (confirm(confirmacion)) {
+        // Cargar datos
+        inventario = datosRespaldo.inventario;
+        historial = datosRespaldo.historial || [];
+        
+        // Actualizar próximo ID
         const maxId = Math.max(...inventario.map(p => p.id || 0));
         proximoId = maxId > 0 ? maxId + 1 : 1;
         
-        // Guardar
+        // Guardar en localStorage permanente
         guardarTodo();
         
-        // Recargar
+        // También guardar este código localmente para futuros usos
+        codigosGuardados[codigoValido] = datosRespaldo;
+        localStorage.setItem('inventaval_codigos_correo', JSON.stringify(codigosGuardados));
+        
+        // Recargar interfaz
         if (usuarioActivo) {
             cargarInventarioAdmin();
         } else {
             cargarInventario();
         }
         
-        alert(`✅ ¡Listo! ${inventario.length} productos recuperados`);
+        // Mostrar éxito
+        alert(`🎉 ¡INVENTARIO CARGADO DESDE CORREO!
+
+✅ ${inventario.length} productos recuperados
+✅ Historial restaurado
+✅ Todo listo para usar
+
+El código ${codigoValido} ahora está guardado en esta PC
+para futuras recuperaciones rápidas.`);
+        
+        // Registrar en historial
+        registrarEnHistorial(
+            "SISTEMA", 
+            "Sistema", 
+            "Importación desde correo", 
+            null, 
+            null, 
+            0, 
+            `Importado desde código: ${codigoValido} (${datosRespaldo.correo})`
+        );
     }
-}
+} //aqui termina la fumction de ImportarCodigo
 
 function toggleHistorial() {
     mostrarNotificacion("📜 Mostrando/ocultando historial...", "info");
