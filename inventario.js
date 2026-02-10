@@ -705,11 +705,66 @@ function imprimirDirecto() {
 }
 
 function generarCodigoRespaldo() {
-    mostrarNotificacion("🔑 Generando código de respaldo...", "info");
+    const id = prompt("Tu ID (ej: juan@gmail.com):", usuarioActivo || "miTienda");
+    if (!id) return;
+    
+    const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let codigo = 'INV-';
+    for (let i = 0; i < 5; i++) {
+        codigo += letras.charAt(Math.floor(Math.random() * letras.length));
+    }
+    
+    const datos = {
+        id: codigo,
+        usuario: id,
+        inventario: inventario,
+        historial: historial,
+        fecha: new Date().toLocaleString('es-VE'),
+        total: inventario.length
+    };
+    
+    // Guardar
+    const respaldos = JSON.parse(localStorage.getItem('inventaval_respaldos') || '{}');
+    respaldos[codigo] = datos;
+    respaldos[id] = datos;
+    localStorage.setItem('inventaval_respaldos', JSON.stringify(respaldos));
+    
+    // Mostrar
+    alert(`✅ CÓDIGO GENERADO:\n\n📝 ANOTA EN PAPEL:\n\n🔑 Código: ${codigo}\n👤 ID: ${id}\n📦 Productos: ${inventario.length}\n\n🏠 En casa: Ve a IMPORTAR y usa este código o ID`);
 }
 
 function mostrarImportarInventario() {
-    mostrarNotificacion("📂 Abriendo importador...", "info");
+    const codigo = prompt("📝 Pega el código (INV-XXXXX) o ID:", "");
+    if (!codigo) return;
+    
+    const respaldos = JSON.parse(localStorage.getItem('inventaval_respaldos') || '{}');
+    const datos = respaldos[codigo.toUpperCase()] || respaldos[codigo];
+    
+    if (!datos) {
+        alert("❌ Código/ID no encontrado");
+        return;
+    }
+    
+    if (confirm(`¿Recuperar ${datos.inventario.length} productos?`)) {
+        inventario = datos.inventario;
+        historial = datos.historial || [];
+        
+        // Actualizar ID
+        const maxId = Math.max(...inventario.map(p => p.id || 0));
+        proximoId = maxId > 0 ? maxId + 1 : 1;
+        
+        // Guardar
+        guardarTodo();
+        
+        // Recargar
+        if (usuarioActivo) {
+            cargarInventarioAdmin();
+        } else {
+            cargarInventario();
+        }
+        
+        alert(`✅ ¡Listo! ${inventario.length} productos recuperados`);
+    }
 }
 
 function toggleHistorial() {
